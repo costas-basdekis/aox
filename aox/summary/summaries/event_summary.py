@@ -1,3 +1,4 @@
+from aox import combined_discovery
 from aox.summary.base_summary import BaseSummary, summary_registry
 
 
@@ -11,8 +12,15 @@ class EventSummary(BaseSummary):
     """
     marker_prefix = "event-summary"
 
-    def generate(self, combined_data):
-        headers = ['Total'] + sorted(combined_data["years"], reverse=True)
+    def generate(self, combined_data: combined_discovery.CombinedInfo):
+        headers = (
+            ['Total']
+            + list(map(str, sorted((
+                year
+                for year, year_info in combined_data.year_infos.items()
+                if year_info.days_with_code or year_info.stars
+            ), reverse=True)))
+        )
         return "\n\n{}\n{}\n{}\n\n".format(
             f"| {' | '.join(headers)} |",
             f"| {' | '.join(['---'] * len(headers))} |",
@@ -22,11 +30,12 @@ class EventSummary(BaseSummary):
             )),
         )
 
-    def get_header(self, combined_data, header):
+    def get_header(self, combined_data: combined_discovery.CombinedInfo,
+                   header):
         if header == 'Total':
-            stars = combined_data["total_stars"]
+            stars = combined_data.total_stars
         else:
-            stars = combined_data["years"][header]["stars"]
+            stars = combined_data.year_infos[int(header)].stars
 
         if header != 'Total' and stars == 50:
             emojis = ':star: :star:'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from aox import BaseChallenge
+from aox.challenge import BaseChallenge
 
 
 class Challenge(BaseChallenge):

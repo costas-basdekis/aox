@@ -111,6 +111,8 @@ class AccountInfo:
             return cls.deserialise_v0(serialised)
         elif version == 1:
             return cls.deserialise_v1(serialised)
+        elif version == 2:
+            return cls.deserialise_v2(serialised)
         else:
             raise Exception(f"Not aware of account info version '{version}'")
 
@@ -133,6 +135,17 @@ class AccountInfo:
             total_stars=serialised['total_stars'],
         )
         account_info.fill_years_from_serialised(serialised['years'], version=1)
+
+        return account_info
+
+    @classmethod
+    def deserialise_v2(cls, serialised):
+        """Read the data from for version 2"""
+        account_info = cls(
+            username=serialised['username'],
+            total_stars=serialised['total_stars'],
+        )
+        account_info.fill_years_from_serialised(serialised['years'], version=2)
 
         return account_info
 
@@ -175,6 +188,8 @@ class AccountInfo:
             self.fill_years_from_serialised_v0(serialised_years)
         elif version == 1:
             self.fill_years_from_serialised_v1(serialised_years)
+        elif version == 2:
+            self.fill_years_from_serialised_v2(serialised_years)
         else:
             raise Exception(f"Not aware of account info version '{version}'")
 
@@ -194,10 +209,18 @@ class AccountInfo:
                 {"year": year, **serialised_year}, 1, self)
             self.year_infos[year] = year_info
 
+    def fill_years_from_serialised_v2(self, serialised_years):
+        """Parse the years from JSON version 2"""
+        for year_str, serialised_year in serialised_years.items():
+            year = int(year_str)
+            year_info = AccountYearInfo.deserialise(
+                {"year": year, **serialised_year}, 2, self)
+            self.year_infos[year] = year_info
+
     def serialise(self):
         """Convert to JSON. The data are versioned"""
         return {
-            "version": 1,
+            "version": 2,
             "username": self.username,
             "total_stars": self.total_stars,
             "years": {
@@ -226,6 +249,8 @@ class AccountYearInfo:
             return cls.from_serialised_v0(serialised, account_info)
         elif version == 1:
             return cls.from_serialised_v1(serialised, account_info)
+        elif version == 2:
+            return cls.from_serialised_v2(serialised, account_info)
         else:
             raise Exception(
                 f"Not aware of account year info version '{version}'")
@@ -254,6 +279,18 @@ class AccountYearInfo:
 
         return year_info
 
+    @classmethod
+    def from_serialised_v2(cls, serialised, account_info):
+        """Read the data from for version 2"""
+        year_info = cls(
+            account_info=account_info,
+            year=serialised["year"],
+            stars=serialised["stars"],
+        )
+        year_info.fill_days_from_serialised(serialised["days"], version=2)
+
+        return year_info
+
     def fill_days_from_site(self):
         """Parse the days information from the site"""
         year_page = self.fetcher.get_year_page(self.year)
@@ -273,6 +310,8 @@ class AccountYearInfo:
             self.fill_days_from_serialised_v0(serialised_days)
         elif version == 1:
             self.fill_days_from_serialised_v1(serialised_days)
+        elif version == 2:
+            self.fill_days_from_serialised_v2(serialised_days)
         else:
             raise Exception(
                 f"Not aware of account year info version '{version}'")
@@ -290,6 +329,13 @@ class AccountYearInfo:
         for day_str, serialised_day in serialised_days.items():
             day = int(day_str)
             day_info = AccountDayInfo.deserialise(serialised_day, 1, self)
+            self.day_infos[day] = day_info
+
+    def fill_days_from_serialised_v2(self, serialised_days):
+        """Read the data from for version 2"""
+        for day_str, serialised_day in serialised_days.items():
+            day = int(day_str)
+            day_info = AccountDayInfo.deserialise(serialised_day, 2, self)
             self.day_infos[day] = day_info
 
     def serialise(self):
@@ -348,6 +394,8 @@ class AccountDayInfo:
             return cls.from_serialised_v0(serialised, year_info)
         elif version == 1:
             return cls.from_serialised_v1(serialised, year_info)
+        elif version == 2:
+            return cls.from_serialised_v2(serialised, year_info)
         else:
             raise Exception(
                 f"Not aware of account day info version '{version}'")
@@ -376,19 +424,34 @@ class AccountDayInfo:
 
         return day_info
 
+    @classmethod
+    def from_serialised_v2(cls, serialised, year_info):
+        """Read the data from for version 2"""
+        day_info = cls(
+            year_info=year_info,
+            day=serialised["day"],
+            stars=serialised["stars"],
+        )
+        day_info.fill_parts_from_serialised(serialised["parts"], version=2)
+
+        return day_info
+
+    @property
+    def year(self):
+        return self.year_info.year
+
     def fill_parts(self):
         """Fill part infos just from the stars"""
         for part, min_stars in ('a', 1), ('b', 2):
-            if min_stars >= self.stars:
-                stars = 1
-            else:
-                stars = 0
-            self.part_infos[part] = AccountPartInfo(self, part, stars)
+            self.part_infos[part] = AccountPartInfo(
+                self, part, self.stars >= min_stars)
 
     def fill_parts_from_serialised(self, serialised_parts, version):
         """Parse the years from JSON. The data are versioned"""
         if version == 1:
             self.fill_parts_from_serialised_v1(serialised_parts)
+        if version == 2:
+            self.fill_parts_from_serialised_v2(serialised_parts)
         else:
             raise Exception(
                 f"Not aware of account day info version '{version}'")
@@ -400,9 +463,17 @@ class AccountDayInfo:
                 serialised_part, 1, self)
             self.part_infos[part] = part_info
 
+    def fill_parts_from_serialised_v2(self, serialised_parts):
+        """Parse the years from JSON version 2"""
+        for part, serialised_part in serialised_parts.items():
+            part_info = AccountPartInfo.deserialise(
+                serialised_part, 2, self)
+            self.part_infos[part] = part_info
+
     def serialise(self):
         """Convert to JSON. The data are versioned"""
         return {
+            "year": self.year,
             "day": self.day,
             "stars": self.stars,
             "parts": {
@@ -419,13 +490,15 @@ class AccountPartInfo:
     """
     day_info: AccountDayInfo
     part: str
-    stars: int
+    has_star: bool
 
     @classmethod
     def deserialise(cls, serialised, version, day_info):
         """Read the data from JSON. The data are versioned"""
         if version == 1:
             return cls.deserialise_v1(serialised, day_info)
+        elif version == 2:
+            return cls.deserialise_v2(serialised, day_info)
         else:
             raise Exception(
                 f"Not aware of account part info version '{version}'")
@@ -436,14 +509,33 @@ class AccountPartInfo:
         return cls(
             day_info=day_info,
             part=serialised["part"],
-            stars=serialised["stars"],
+            has_star=bool(serialised["stars"]),
         )
+
+    @classmethod
+    def deserialise_v2(cls, serialised, day_info):
+        """Parse the years from JSON version 1"""
+        return cls(
+            day_info=day_info,
+            part=serialised["part"],
+            has_star=serialised["has_star"],
+        )
+
+    @property
+    def year(self):
+        return self.day_info.year
+
+    @property
+    def day(self):
+        return self.day_info.day
 
     def serialise(self):
         """Convert to JSON. The data are versioned"""
         return {
+            "year": self.year,
+            "day": self.day,
             "part": self.part,
-            "stars": self.stars,
+            "has_star": self.has_star,
         }
 
 
