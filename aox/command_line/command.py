@@ -1,19 +1,16 @@
-import copy
 import distutils.dir_util
 import importlib
 import itertools
 import json
 import os
-import re
 import shutil
 import sys
 from pathlib import Path
 
-import bs4
 import click
 import requests
 
-from .. import local_discovery
+from .. import local_discovery, site_discovery
 from ..settings import settings
 from ..challenge import BaseChallenge
 from ..settings.loader import EXAMPLE_SETTINGS_DIRECTORY
@@ -32,7 +29,7 @@ def aox(ctx):
     ctx.obj = {}
     if not (ctx.invoked_subcommand and sys.argv[1:2] == 'init-settings'):
         update_context_object(ctx, {
-            'site_data': get_cached_site_data(),
+            'account_info': get_cached_site_data(),
             'repo_info': get_repo_info(),
         })
     if ctx.invoked_subcommand:
@@ -43,15 +40,17 @@ def aox(ctx):
 def update_context_object(ctx, updates):
     ctx.obj.update(updates)
     ctx.obj['combined_data'] = combine_data(
-        ctx.obj['site_data'], ctx.obj['repo_info'])
+        ctx.obj['account_info'], ctx.obj['repo_info'])
 
 
 def get_cached_site_data():
     if not settings.SITE_DATA_PATH or not settings.SITE_DATA_PATH.exists():
         return None
 
-    with settings.SITE_DATA_PATH.open():
-        return json.load(settings.SITE_DATA_PATH.open())
+    with settings.SITE_DATA_PATH.open() as f:
+        serialised = json.load(f)
+
+    return site_discovery.AccountInfo.deserialise(serialised)
 
 
 @aox.command()
@@ -65,7 +64,7 @@ def init_settings(ctx):
             f"{e_value(str(user_settings_path))}. Will not overwrite them.")
 
         update_context_object(ctx, {
-            'site_data': get_cached_site_data(),
+            'account_info': get_cached_site_data(),
             'repo_info': get_repo_info(),
         })
         return
@@ -77,7 +76,7 @@ def init_settings(ctx):
         f"{e_value(str(dot_aox.joinpath('sensitive_user_settings.py')))}")
 
     update_context_object(ctx, {
-        'site_data': get_cached_site_data(),
+        'account_info': get_cached_site_data(),
         'repo_info': get_repo_info(),
     })
 
@@ -368,19 +367,34 @@ PART_STATUSES = [
 ]
 
 
-def combine_data(site_data, repo_info: local_discovery.RepoInfo):
+def combine_data(
+        account_info: site_discovery.AccountInfo,
+        repo_info: local_discovery.RepoInfo):
     challenges_root = get_challenges_root()
 
-    if site_data is None:
+    if account_info is None:
         combined_data = {
             "has_site_data": False,
-            "user_name": None,
+            "username": None,
             "total_stars": 0,
             "years": {},
         }
     else:
-        combined_data = copy.deepcopy(site_data)
-        combined_data["has_site_data"] = True
+        combined_data = {
+            "has_site_data": True,
+            "username": account_info.username,
+            "total_stars": account_info.total_stars,
+            "years": {
+                str(year_info.year): {
+                    "stars": year_info.stars,
+                    "days": {
+                        str(day_info.day): day_info.stars
+                        for day_info in year_info.day_infos.values()
+                    }
+                }
+                for year_info in account_info.year_infos.values()
+            }
+        }
     days_by_year = {
         str(year_info.year): list(year_info.day_infos)
         for year_info in repo_info.year_infos.values()
@@ -491,188 +505,30 @@ def get_repo_info() -> local_discovery.RepoInfo:
 @aox.command()
 @click.pass_context
 def fetch(ctx):
-    data = update_data_from_site()
-    if data is None:
+    account_info = get_account_info()
+    if account_info is None:
         click.echo(f"Could {e_error('not fetch data')}")
         return
 
     if settings.SITE_DATA_PATH:
         with settings.SITE_DATA_PATH.open('w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(account_info.serialise(), f, indent=2)
 
-    if data['total_stars'] is None:
+    if not account_info.username:
         star_count_text = 'unknown'
     else:
-        star_count_text = str(data['total_stars'])
+        star_count_text = str(account_info.total_stars)
         update_context_object(ctx, {
-            'site_data': data,
+            'account_info': account_info,
         })
     click.echo(
-        f"Fetched data for {e_success(data['user_name'])}: "
+        f"Fetched data for {e_success(account_info.username)}: "
         f"{e_star(f'{star_count_text} stars')} in "
-        f"{e_success(str(len(data['years'])))} years")
+        f"{e_success(str(len(account_info.year_infos)))} years")
 
 
-def update_data_from_site():
-    events_page = get_events_page()
-
-    user_name = get_user_name(events_page)
-    if not user_name:
-        return None
-
-    total_stars = get_total_stars(events_page)
-
-    years_and_details = get_years_and_details(events_page)
-
-    return {
-        "user_name": user_name,
-        "total_stars": total_stars,
-        "years": years_and_details,
-    }
-
-
-def get_events_page():
-    session_id = get_session_id()
-    if not session_id:
-        return None
-
-    response = requests.get(
-        'https://adventofcode.com/events',
-        cookies={"session": session_id},
-        headers={"User-Agent": "aox"},
-    )
-    if not response.ok:
-        click.echo(
-            f"Could not get {e_error('events information')} from "
-            f"AOC site - is the internet down, AOC down, the URL is wrong, or "
-            f"are you banned?")
-        return None
-
-    return bs4.BeautifulSoup(response.text, "html.parser")
-
-
-def get_years_and_details(events_page):
-    stars_nodes = events_page.select(".eventlist-event .star-count")
-    years_nodes = [node.parent for node in stars_nodes]
-    years_and_stars = [
-        (year, stars)
-        for year, stars in filter(None, map(get_year_and_stars, years_nodes))
-        if stars
-    ]
-    return {
-        str(year): {
-            "stars": stars,
-            "days": get_year_day_stars(year),
-        }
-        for year, stars in years_and_stars
-    }
-
-
-def get_total_stars(events_page):
-    total_stars_nodes = events_page.select("p > .star-count")
-    return parse_star_count(total_stars_nodes)
-
-
-def get_user_name(events_page):
-    user_nodes = events_page.select(".user")
-    if not user_nodes:
-        click.echo(
-            f"Either the session ID in {e_error('AOC_SESSION_ID')} is wrong, "
-            f"or it has expired: could not find the user name")
-        return None
-
-    user_node = user_nodes[0]
-    text_children = [
-        child
-        for child in user_node.children
-        if isinstance(child, str)
-    ]
-    if not text_children:
-        click.echo(
-            f"Either the user name is blank or the format has changed")
-        return None
-    return text_children[0].strip()
-
-
-def get_year_day_stars(year):
-    year_page = get_year_page(year)
-    if year_page is None:
-        return {}
-
-    days_nodes = year_page.select('.calendar > a[class^="calendar-day"]')
-    # noinspection PyTypeChecker
-    return dict(filter(None, map(get_day_and_stars, days_nodes)))
-
-
-def get_year_page(year):
-    session_id = get_session_id()
-    if not session_id:
-        return None
-
-    response = requests.get(
-        f'https://adventofcode.com/{year}',
-        cookies={"session": session_id},
-        headers={"User-Agent": "aox"},
-    )
-    if not response.ok:
-        click.echo(
-            f"Could not get "
-            f"{e_error(f'year {year} information')} from AOC "
-            f"site (status was {e_error(str(response.status_code))}) - is the "
-            f"internet down, AOC down, the URL is wrong, or are you banned?")
-        return None
-
-    return bs4.BeautifulSoup(response.text, "html.parser")
-
-
-def get_day_and_stars(day_node):
-    day_name_nodes = day_node.select(".calendar-day")
-    if not day_name_nodes:
-        return None
-    day_name_node = day_name_nodes[0]
-    day_text = day_name_node.text
-    try:
-        day = int(day_text)
-    except ValueError:
-        return None
-
-    class_names = day_node.attrs['class']
-    if 'calendar-verycomplete' in class_names:
-        stars = 2
-    elif 'calendar-complete' in class_names:
-        stars = 1
-    else:
-        stars = 0
-
-    return str(day), stars
-
-
-def get_year_and_stars(year_node):
-    year_name_node = year_node.findChild('a')
-    if not year_name_node:
-        return None
-    year_name_match = re.compile(r'^\[(\d+)]$').match(year_name_node.text)
-    if not year_name_match:
-        return None
-    year_text, = year_name_match.groups()
-    year = int(year_text)
-
-    stars_nodes = year_node.select('.star-count')
-    stars = parse_star_count(stars_nodes, default=0)
-
-    return year, stars
-
-
-def parse_star_count(stars_nodes, default=None):
-    if not stars_nodes:
-        return default
-    stars_node = stars_nodes[0]
-    stars_match = re.compile(r'^(\d+)\*$').match(stars_node.text.strip())
-    if not stars_match:
-        return default
-
-    stars_text, = stars_match.groups()
-    return int(stars_text)
+def get_account_info() -> site_discovery.AccountInfo:
+    return site_discovery.AccountInfo.from_site()
 
 
 @aox.command()
