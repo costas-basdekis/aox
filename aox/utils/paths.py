@@ -70,6 +70,7 @@ def load_module_from_path(path: Path, module_name: str = None):
         module_name, _ = os.path.splitext(path.name)
     spec = importlib.util.spec_from_file_location(module_name, path)
     module = importlib.util.module_from_spec(spec)
+    # noinspection PyUnresolvedReferences
     spec.loader.exec_module(module)
 
     return module
