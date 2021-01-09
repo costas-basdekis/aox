@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
 
-__dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-"${__dir}"/aox_cli.py "$@"
+/usr/bin/env python3 -c "from aox.command_line.command import aox; aox()" "$@"

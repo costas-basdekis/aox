@@ -12,6 +12,5 @@ setup(
     packages=['aox'],
     scripts=[
         'scripts/aox',
-        'scripts/aox_cli.py',
     ],
 )
