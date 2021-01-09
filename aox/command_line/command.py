@@ -1,28 +1,24 @@
 import copy
 import distutils.dir_util
-import glob
 import importlib
 import itertools
 import json
 import os
 import re
 import shutil
-import string
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 import bs4
 import click
 import requests
 
+from .. import local_discovery
 from ..settings import settings
 from ..challenge import BaseChallenge
 from ..settings.loader import EXAMPLE_SETTINGS_DIRECTORY
 from ..styling.shortcuts import e_success, e_value, e_warn, e_error, \
     e_suggest, e_star, e_unable
-
-YearsAndDays = List[Tuple[int, List[int], List[int]]]
 
 current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
 example_year_path = current_directory.joinpath('example_year')
@@ -37,7 +33,7 @@ def aox(ctx):
     if not (ctx.invoked_subcommand and sys.argv[1:2] == 'init-settings'):
         update_context_object(ctx, {
             'site_data': get_cached_site_data(),
-            'years_and_days': get_years_and_days(),
+            'repo_info': get_repo_info(),
         })
     if ctx.invoked_subcommand:
         return
@@ -47,7 +43,7 @@ def aox(ctx):
 def update_context_object(ctx, updates):
     ctx.obj.update(updates)
     ctx.obj['combined_data'] = combine_data(
-        ctx.obj['site_data'], ctx.obj['years_and_days'])
+        ctx.obj['site_data'], ctx.obj['repo_info'])
 
 
 def get_cached_site_data():
@@ -70,7 +66,7 @@ def init_settings(ctx):
 
         update_context_object(ctx, {
             'site_data': get_cached_site_data(),
-            'years_and_days': get_years_and_days(),
+            'repo_info': get_repo_info(),
         })
         return
 
@@ -82,7 +78,7 @@ def init_settings(ctx):
 
     update_context_object(ctx, {
         'site_data': get_cached_site_data(),
-        'years_and_days': get_years_and_days(),
+        'repo_info': get_repo_info(),
     })
 
 
@@ -160,7 +156,7 @@ def add(ctx, year: int, day: int, part: str):
         f"{e_value(str(part_path))}")
 
     update_context_object(ctx, {
-        'years_and_days': get_years_and_days(),
+        'repo_info': get_repo_info(),
     })
 
 
@@ -372,7 +368,7 @@ PART_STATUSES = [
 ]
 
 
-def combine_data(site_data, years_and_days):
+def combine_data(site_data, repo_info: local_discovery.RepoInfo):
     challenges_root = get_challenges_root()
 
     if site_data is None:
@@ -386,8 +382,8 @@ def combine_data(site_data, years_and_days):
         combined_data = copy.deepcopy(site_data)
         combined_data["has_site_data"] = True
     days_by_year = {
-        str(year): days
-        for year, days, missing_days in years_and_days
+        str(year_info.year): list(year_info.day_infos)
+        for year_info in repo_info.year_infos.values()
     }
     for year in days_by_year:
         if year not in combined_data['years']:
@@ -487,30 +483,9 @@ def combine_data(site_data, years_and_days):
     return combined_data
 
 
-def get_years_and_days() -> YearsAndDays:
-    challenges_root = get_challenges_root()
-    if not challenges_root:
-        return []
-    part_a_files = glob.glob(
-        str(challenges_root.joinpath("year_*", "day_*", "part_a.py")))
-    years_and_days = [
-        (year, [month for _, month in items])
-        for year, items in itertools.groupby(sorted(
-            (int(year_text), int(day_text))
-            for name in part_a_files
-            for year_part, day_part, _ in [name.split('/', 2)]
-            for year_text, day_text in [
-                (year_part.replace('year_', ''), day_part.replace('day_', '')),
-            ]
-            if not set(year_text) - set(string.digits)
-            and not set(day_text) - set(string.digits)
-        ), key=lambda item: item[0])
-    ]
-
-    return [
-        (year, days, sorted(set(range(1, 26)) - set(days)))
-        for year, days in years_and_days
-    ]
+def get_repo_info() -> local_discovery.RepoInfo:
+    return local_discovery.RepoInfo.from_roots(
+        get_challenges_root(), settings.CHALLENGES_MODULE_NAME_ROOT)
 
 
 @aox.command()
