@@ -10,4 +10,8 @@ setup(
     author_email='costas@basdekis.io',
     url='https://github.com/costas-basdekis/aox',
     packages=['aox'],
+    scripts=[
+        'scripts/aox',
+        'scripts/aox_cli.py',
+    ],
 )

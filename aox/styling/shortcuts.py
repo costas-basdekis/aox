@@ -19,6 +19,7 @@ def make_colour(**colour_kwargs):
 e_error = make_colour(fg='red')
 e_warn = make_colour(fg='yellow')
 e_success = make_colour(fg='green')
+e_unable = make_colour(fg='white')
 
 e_star = make_colour(fg='bright_yellow')
 e_value = make_colour(fg='blue', bold=True)
