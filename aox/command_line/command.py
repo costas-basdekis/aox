@@ -4,6 +4,7 @@ import glob
 import importlib
 import itertools
 import json
+import os
 import re
 import shutil
 import string
@@ -20,6 +21,11 @@ from ..styling.shortcuts import e_success, e_value, e_warn, e_error, e_suggest, 
     e_star, e_unable
 
 YearsAndDays = List[Tuple[int, List[int], List[int]]]
+
+current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+example_year_path = current_directory.joinpath('example_year')
+example_day_path = example_year_path.joinpath('example_day')
+example_part_path = example_day_path.joinpath('example_part.py')
 
 
 @click.group(invoke_without_command=True, chain=True)
@@ -42,14 +48,11 @@ def update_context_object(ctx, updates):
 
 
 def get_cached_site_data():
-    try:
-        site_data_file = Path(
-            '../../../advent-of-code-submissions/site_data.json').open()
-    except FileNotFoundError:
+    if not settings.SITE_DATA_PATH or not settings.SITE_DATA_PATH.exists():
         return None
 
-    with site_data_file:
-        return json.load(site_data_file)
+    with settings.SITE_DATA_PATH.open():
+        return json.load(settings.SITE_DATA_PATH.open())
 
 
 @aox.command()
@@ -94,9 +97,12 @@ def challenge(ctx, year: int, day: int, part: str, force: bool, rest):
 @click.argument('part', type=click.Choice(['a', 'b']))
 @click.pass_context
 def add(ctx, year: int, day: int, part: str):
-    year_path = Path("year_{}/__init__.py".format(year))
-    day_path = Path("year_{}/day_{:0>2}/__init__.py".format(year, day, part))
-    part_path = Path("year_{}/day_{:0>2}/part_{}.py".format(year, day, part))
+    challenges_root = get_challenges_root()
+    if not challenges_root:
+        return
+    year_path = challenges_root.joinpath(f"year_{year}")
+    day_path = year_path.joinpath("day_{day:0>2}")
+    part_path = day_path.joinpath("part_{part}.py")
 
     if part_path.exists():
         click.echo(
@@ -104,23 +110,18 @@ def add(ctx, year: int, day: int, part: str):
             f"exists at {e_value(str(part_path))}")
         return
 
-    if not year_path.exists():
-        Path(year_path.parent).mkdir(exist_ok=True)
-        year_path.touch()
-    if not day_path.exists():
-        distutils.dir_util.copy_tree(
-            "../../../advent-of-code-submissions/example_year/example_day", "year_{}/day_{:0>2}".format(
-                year, day))
-        part_a_path = Path(
-            "year_{}/day_{:0>2}/part_{}.py".format(year, day, "a"))
-        Path("year_{}/day_{:0>2}/example_part.py".format(year, day)) \
-            .rename(part_a_path)
+    year_init_path = year_path.joinpath("__init__.py")
+    if not year_init_path.exists():
+        Path(year_init_path.parent).mkdir(exist_ok=True)
+        year_init_path.touch()
+    day_init_path = day_path.joinpath("__init__.py")
+    if not day_init_path.exists():
+        distutils.dir_util.copy_tree(example_day_path, day_path)
+        part_a_path = day_path.joinpath("part_{'a'}.py")
+        example_part_path.rename(part_a_path)
         ctx.invoke(refresh_challenge_input, year=year, day=day)
     if not part_path.exists():
-        shutil.copy(
-            Path(
-                "../../../advent-of-code-submissions/example_year/example_day/example_part.py"),
-            part_path)
+        shutil.copy(example_part_path, part_path)
 
     click.echo(
         f"Added challenge {e_success(f'{year} {day} {part.upper()}')} at "
@@ -131,11 +132,32 @@ def add(ctx, year: int, day: int, part: str):
     })
 
 
+def get_challenges_root():
+    challenges_root: Path = settings.CHALLENGES_ROOT
+    if not challenges_root:
+        if settings.is_missing:
+            click.echo(
+                f"You haven't set {e_error('CHALLENGES_ROOT')} - use "
+                f"{e_suggest('aox init-settings')} to create your settings "
+                f"file")
+        else:
+            click.echo(
+                f"You haven't set {e_error('CHALLENGES_ROOT')} in "
+                f"{e_value('user_settings.py')}")
+        return None
+
+    return challenges_root
+
+
 @aox.command()
 @click.argument('year', type=int)
 @click.argument('day', type=int)
 def refresh_challenge_input(year, day):
-    input_path = Path("year_{}/day_{:0>2}/part_a_input.txt".format(year, day))
+    challenges_root = get_challenges_root()
+    if not challenges_root:
+        return
+    input_path = challenges_root.joinpath(
+        f"year_{year}", f"day_{day:0>2}", "part_a_input.txt")
     _input = get_input_from_site(year, day)
     if not _input:
         click.echo(
@@ -163,7 +185,7 @@ def get_input_from_site(year, day):
     response = requests.get(
         f'https://adventofcode.com/{year}/day/{day}/input',
         cookies={"session": session_id},
-        headers={"User-Agent": "advent-of-code-submissions"},
+        headers={"User-Agent": "aox"},
     )
     if not response.ok:
         if response.status_code == 404:
@@ -319,6 +341,8 @@ PART_STATUSES = [
 
 
 def combine_data(site_data, years_and_days):
+    challenges_root = get_challenges_root()
+
     if site_data is None:
         combined_data = {
             "has_site_data": False,
@@ -345,15 +369,20 @@ def combine_data(site_data, years_and_days):
     for year, year_data in combined_data["years"].items():
         year_stars = year_data["stars"]
         year_data["year"] = year
-        year_data["has_code"] = Path("year_{}/__init__.py".format(year))\
-            .exists()
+        if challenges_root:
+            year_data["has_code"] = challenges_root\
+                .joinpath(f"year_{year}", "__init__.py").exists()
+        else:
+            year_data["has_code"] = False
         for day, day_stars in list(year_data["days"].items()):
-            has_part_a = Path("year_{}/day_{:0>2}/part_{}.py".format(
-                year, day, "a",
-            )).exists()
-            has_part_b = Path("year_{}/day_{:0>2}/part_{}.py".format(
-                year, day, "b",
-            )).exists()
+            if challenges_root:
+                day_path = challenges_root\
+                    .joinpath(f"year_{year}", f"day_{day:0>2}")
+                has_part_a = day_path.joinpath(f"part_{'a'}.py").exists()
+                has_part_b = day_path.joinpath(f"part_{'b'}.py").exists()
+            else:
+                has_part_a = False
+                has_part_b = False
             if day_stars >= 1:
                 part_a_status = PART_STATUS_COMPLETE
             elif has_part_a:
@@ -375,19 +404,21 @@ def combine_data(site_data, years_and_days):
                 part_b_status = PART_STATUS_DID_NOT_ATTEMPT
             year_data["days"][day] = {
                 "year": year,
-                "day": "{:0>2}".format(day),
+                "day": f"{day:0>2}",
                 "stars": day_stars,
                 "has_code": has_part_a or has_part_b,
                 "parts": {
                     part: {
                         "year": year,
-                        "day": "{:0>2}".format(day),
+                        "day": f"{day:0>2}",
                         "part": part,
                         "has_code": has_part,
                         "star": day_stars >= minimum_stars,
                         "status": part_status,
-                        "module_name": "year_{}.day_{:0>2}.part_{}".format(
-                            year, day, part),
+                        "module_name": ".".join(filter(None, [
+                            settings.CHALLENGES_MODULE_NAME_ROOT,
+                            f"year_{year}.day_{day:0>2}.part_{part}",
+                        ])),
                     }
                     for part, minimum_stars, has_part, part_status
                     in [
@@ -425,7 +456,11 @@ def combine_data(site_data, years_and_days):
 
 
 def get_years_and_days() -> YearsAndDays:
-    part_a_files = glob.glob("year_*/day_*/part_a.py")
+    challenges_root = get_challenges_root()
+    if not challenges_root:
+        return
+    part_a_files = glob.glob(
+        str(challenges_root.joinpath("year_*", "day_*", "part_a.py")))
     years_and_days = [
         (year, [month for _, month in items])
         for year, items in itertools.groupby(sorted(
@@ -454,8 +489,9 @@ def fetch(ctx):
         click.echo(f"Could {e_error('not fetch data')}")
         return
 
-    with Path('../../../advent-of-code-submissions/site_data.json').open('w') as f:
-        json.dump(data, f, indent=2)
+    if settings.SITE_DATA_PATH:
+        with settings.SITE_DATA_PATH.open('w') as f:
+            json.dump(data, f, indent=2)
 
     if data['total_stars'] is None:
         star_count_text = 'unknown'
@@ -496,7 +532,7 @@ def get_events_page():
     response = requests.get(
         'https://adventofcode.com/events',
         cookies={"session": session_id},
-        headers={"User-Agent": "advent-of-code-submissions"},
+        headers={"User-Agent": "aox"},
     )
     if not response.ok:
         click.echo(
@@ -568,7 +604,7 @@ def get_year_page(year):
     response = requests.get(
         f'https://adventofcode.com/{year}',
         cookies={"session": session_id},
-        headers={"User-Agent": "advent-of-code-submissions"},
+        headers={"User-Agent": "aox"},
     )
     if not response.ok:
         click.echo(
@@ -634,6 +670,9 @@ def parse_star_count(stars_nodes, default=None):
 @aox.command()
 @click.pass_context
 def update_readme(ctx):
+    readme_path = get_readme_path()
+    if not readme_path:
+        return
     combined_data = ctx.obj["combined_data"]
     if not combined_data["has_site_data"]:
         click.echo(
@@ -642,7 +681,6 @@ def update_readme(ctx):
             f"{e_suggest('aox fetch')} first")
         return
 
-    readme_path = Path('../../../advent-of-code-submissions/README.md')
     readme_text = readme_path.read_text()
 
     updated_readme_text = update_readme_text(combined_data, readme_text)
@@ -652,6 +690,23 @@ def update_readme(ctx):
 
     readme_path.write_text(updated_readme_text)
     click.echo(f"Updated {e_success('README')} with site data")
+
+
+def get_readme_path():
+    readme_path: Path = settings.README_PATH
+    if not readme_path:
+        if settings.is_missing:
+            click.echo(
+                f"You haven't set {e_error('README_PATH')} - use "
+                f"{e_suggest('aox init-settings')} to create your settings "
+                f"file")
+        else:
+            click.echo(
+                f"You haven't set {e_error('README_PATH')} in "
+                f"{e_value('user_settings.py')}")
+        return None
+
+    return readme_path
 
 
 def update_readme_text(combined_data, readme_text):
@@ -725,7 +780,7 @@ def get_submissions_text(combined_data):
 
     year_links = ('',) + tuple(map(' '.join, aligned_year_links_tuples))
     day_links_list = [
-        ('{: >2}'.format(day),) + tuple(map(' '.join, day_links_tuples))
+        (f"{day: >2}",) + tuple(map(' '.join, day_links_tuples))
         for day, day_links_tuples
         in zip(range(1, 26), aligned_day_links_tuples_list)
     ]
@@ -740,38 +795,26 @@ def get_submissions_text(combined_data):
     aligned_table_rows = align_rows(table_rows)
 
     table = "\n".join(
-        '| {} |'.format(' | '.join(row))
+        f"| {' | '.join(row)} |"
         for row in aligned_table_rows
     )
 
     link_definitions = "\n\n".join(
         "\n".join([
-            "[ch-{}]: https://adventofcode.com/{}".format(year[-2:], year),
-            "[co-{}]: year_{}".format(year[-2:], year),
+            f"[ch-{year[-2:]}]: https://adventofcode.com/{year}",
+            f"[co-{year[-2:]}]: year_{year}",
         ] + sum((
             [
-                "[ch-{}-{:0>2}]: https://adventofcode.com/{}/day/{}".format(
-                    year[-2:],
-                    day,
-                    year,
-                    day,
-                ),
-                "[co-{}-{:0>2}]: year_{}/day_{:0>2}".format(
-                    year[-2:],
-                    day,
-                    year,
-                    day,
-                ),
+                f"[ch-{year[-2:]}-{day:0>2}]: "
+                f"https://adventofcode.com/{year}/day/{day}",
+                f"[co-{year[-2:]}-{day:0>2}]: year_{year}/day_{day:0>2}",
             ]
             for day in range(1, 26)
         ), []))
         for year in years
     )
 
-    return "\n\n{}\n\n{}\n\n".format(
-        table,
-        link_definitions,
-    )
+    return f"\n\n{table}\n\n{link_definitions}\n\n"
 
 
 def align_rows(rows):
@@ -812,13 +855,13 @@ def get_submission_year_day_stars_tuple(day_data):
     has_part_a = day_data["parts"]["a"]["has_code"]
     return (
         (
-            "[Code][co-{}-{}]".format(year[-2:], day)
+            f"[Code][co-{year[-2:]}-{day}]"
             if has_part_a else
             'Code'
         ),
         PART_STATUS_EMOJI_MAP[day_data["parts"]["a"]["status"]],
         PART_STATUS_EMOJI_MAP[day_data["parts"]["b"]["status"]],
-        "[Challenge][ch-{}-{}]".format(year[-2:], day),
+        f"[Challenge][ch-{year[-2:]}-{day}]",
     )
 
 
@@ -846,8 +889,8 @@ def update_summary_in_readme_text(combined_data, readme_text):
 def get_summary_text(combined_data):
     headers = ['Total'] + sorted(combined_data["years"], reverse=True)
     return "\n\n{}\n{}\n{}\n\n".format(
-        '| {} |'.format(' | '.join(headers)),
-        '| {} |'.format(' | '.join(['---'] * len(headers))),
+        f"| {' | '.join(headers)} |",
+        f"| {' | '.join(['---'] * len(headers))} |",
         '| {} |'.format(' | '.join(
             "{} :star:{}".format(
                 stars,
