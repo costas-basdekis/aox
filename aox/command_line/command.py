@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import string
+import sys
 from pathlib import Path
 from typing import List, Tuple
 
@@ -17,8 +18,9 @@ import requests
 
 from ..settings import settings
 from ..challenge import BaseChallenge
-from ..styling.shortcuts import e_success, e_value, e_warn, e_error, e_suggest, \
-    e_star, e_unable
+from ..settings.loader import EXAMPLE_SETTINGS_DIRECTORY
+from ..styling.shortcuts import e_success, e_value, e_warn, e_error, \
+    e_suggest, e_star, e_unable
 
 YearsAndDays = List[Tuple[int, List[int], List[int]]]
 
@@ -32,10 +34,11 @@ example_part_path = example_day_path.joinpath('example_part.py')
 @click.pass_context
 def aox(ctx):
     ctx.obj = {}
-    update_context_object(ctx, {
-        'site_data': get_cached_site_data(),
-        'years_and_days': get_years_and_days(),
-    })
+    if not (ctx.invoked_subcommand and sys.argv[1:2] == 'init-settings'):
+        update_context_object(ctx, {
+            'site_data': get_cached_site_data(),
+            'years_and_days': get_years_and_days(),
+        })
     if ctx.invoked_subcommand:
         return
     ctx.invoke(list_years_and_days)
@@ -53,6 +56,34 @@ def get_cached_site_data():
 
     with settings.SITE_DATA_PATH.open():
         return json.load(settings.SITE_DATA_PATH.open())
+
+
+@aox.command()
+@click.pass_context
+def init_settings(ctx):
+    dot_aox = Path('.aox')
+    user_settings_path = dot_aox.joinpath('user_settings.py')
+    if user_settings_path.exists():
+        click.echo(
+            f"User settings {e_warn('already exist')} at "
+            f"{e_value(str(user_settings_path))}. Will not overwrite them.")
+
+        update_context_object(ctx, {
+            'site_data': get_cached_site_data(),
+            'years_and_days': get_years_and_days(),
+        })
+        return
+
+    distutils.dir_util.copy_tree(EXAMPLE_SETTINGS_DIRECTORY, str(dot_aox))
+    click.echo(
+        f"Initialised {e_success('user settings')} at {e_value(str(dot_aox))}! "
+        f"You should now edit {e_value(str(user_settings_path))} and "
+        f"{e_value(str(dot_aox.joinpath('sensitive_user_settings.py')))}")
+
+    update_context_object(ctx, {
+        'site_data': get_cached_site_data(),
+        'years_and_days': get_years_and_days(),
+    })
 
 
 @aox.command()
@@ -116,6 +147,7 @@ def add(ctx, year: int, day: int, part: str):
         year_init_path.touch()
     day_init_path = day_path.joinpath("__init__.py")
     if not day_init_path.exists():
+        # noinspection PyTypeChecker
         distutils.dir_util.copy_tree(example_day_path, day_path)
         part_a_path = day_path.joinpath("part_{'a'}.py")
         example_part_path.rename(part_a_path)
@@ -458,7 +490,7 @@ def combine_data(site_data, years_and_days):
 def get_years_and_days() -> YearsAndDays:
     challenges_root = get_challenges_root()
     if not challenges_root:
-        return
+        return []
     part_a_files = glob.glob(
         str(challenges_root.joinpath("year_*", "day_*", "part_a.py")))
     years_and_days = [
@@ -593,6 +625,7 @@ def get_year_day_stars(year):
         return {}
 
     days_nodes = year_page.select('.calendar > a[class^="calendar-day"]')
+    # noinspection PyTypeChecker
     return dict(filter(None, map(get_day_and_stars, days_nodes)))
 
 
