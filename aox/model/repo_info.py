@@ -5,15 +5,13 @@ The main entry point is `RepoInfo.from_roots`
 """
 
 import datetime
-
-
-__all__ = ['RepoInfo', 'RepoYearInfo', 'RepoDayInfo', 'RepoPartInfo']
-
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Dict, Optional
 
 from aox.settings import settings
+
+__all__ = ['RepoInfo', 'RepoYearInfo', 'RepoDayInfo', 'RepoPartInfo']
 
 
 @dataclass
@@ -48,8 +46,8 @@ class RepoInfo:
 
     def fill(self):
         """
-        Add `RepoYearInfo` instances (and fill them) for each year present in the
-        filenames.
+        Add `RepoYearInfo` instances (and fill them) for each year present in
+        the filenames.
         """
         for year in self.YEARS:
             self.year_infos[year] = RepoYearInfo.from_year(year, self)
@@ -128,8 +126,8 @@ class RepoDayInfo:
 
     def fill(self):
         """
-        Add `RepoPartInfo` instances (and fill them) for each part present in the
-        filenames.
+        Add `RepoPartInfo` instances (and fill them) for each part present in
+        the filenames.
         """
         for part in self.PARTS:
             self.part_infos[part] = RepoPartInfo.from_part(part, self)

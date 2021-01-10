@@ -13,10 +13,8 @@ from typing import Optional
 import click
 
 from aox.settings import settings
-from aox.combined_discovery import CombinedInfo, CombinedPartInfo
-from aox.local_discovery import RepoInfo
+from aox.model import RepoInfo, AccountInfo, CombinedInfo, CombinedPartInfo
 from aox.settings.settings_class import Settings
-from aox.site_discovery import AccountInfo
 from aox.web import WebAoc
 from aox.styling.shortcuts import e_warn, e_value, e_success, e_star, e_error, \
     e_unable, e_suggest

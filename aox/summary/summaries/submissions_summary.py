@@ -1,4 +1,6 @@
-from aox import utils, combined_discovery
+from aox import utils
+from aox.model import CombinedDayInfo, CombinedYearInfo, CombinedPartInfo, \
+    CombinedInfo
 from aox.summary.base_summary import BaseSummary, summary_registry
 
 
@@ -14,14 +16,14 @@ class SubmissionsSummary(BaseSummary):
     marker_prefix = "submissions"
 
     PART_STATUS_EMOJI_MAP = {
-        combined_discovery.CombinedPartInfo.STATUS_COMPLETE: ':star:',
-        combined_discovery.CombinedPartInfo.STATUS_FAILED: ':x:',
-        combined_discovery.CombinedPartInfo.STATUS_DID_NOT_ATTEMPT: '',
-        combined_discovery.CombinedPartInfo.STATUS_COULD_NOT_ATTEMPT:
+        CombinedPartInfo.STATUS_COMPLETE: ':star:',
+        CombinedPartInfo.STATUS_FAILED: ':x:',
+        CombinedPartInfo.STATUS_DID_NOT_ATTEMPT: '',
+        CombinedPartInfo.STATUS_COULD_NOT_ATTEMPT:
         ':grey_exclamation:',
     }
 
-    def generate(self, combined_data: combined_discovery.CombinedInfo):
+    def generate(self, combined_data: CombinedInfo):
         years = sorted((
             year
             for year, year_info in combined_data.year_infos.items()
@@ -115,20 +117,18 @@ class SubmissionsSummary(BaseSummary):
         return f"\n\n{table}\n\n{link_definitions}\n\n"
 
     def get_submission_year_stars_text(
-            self, year_info: combined_discovery.CombinedYearInfo):
+            self, year_info: CombinedYearInfo):
         if year_info.stars == 50:
             return f"50 :star: :star:"
 
         return "{} :star: / {} :x: / {} :grey_exclamation:".format(
             year_info.stars,
+            year_info.counts_by_part_status[CombinedPartInfo.STATUS_FAILED],
             year_info.counts_by_part_status[
-                combined_discovery.CombinedPartInfo.STATUS_FAILED],
-            year_info.counts_by_part_status[
-                combined_discovery.CombinedPartInfo.STATUS_COULD_NOT_ATTEMPT],
+                CombinedPartInfo.STATUS_COULD_NOT_ATTEMPT],
         )
 
-    def get_submission_year_day_stars_tuple(
-            self, day_info: combined_discovery.CombinedDayInfo):
+    def get_submission_year_day_stars_tuple(self, day_info: CombinedDayInfo):
         return (
             (
                 f"[Code][co-{str(day_info.year)[-2:]}-{day_info.day:0>2}]"

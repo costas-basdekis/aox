@@ -3,6 +3,7 @@ Gather stars from the AOC site.
 
 The main entry point is `AccountInfo.from_site`
 """
+
 import json
 import re
 from dataclasses import dataclass, field

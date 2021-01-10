@@ -1,4 +1,4 @@
-from aox import combined_discovery
+from aox.model import CombinedInfo
 from aox.summary.base_summary import BaseSummary, summary_registry
 
 
@@ -12,7 +12,7 @@ class EventSummary(BaseSummary):
     """
     marker_prefix = "event-summary"
 
-    def generate(self, combined_data: combined_discovery.CombinedInfo):
+    def generate(self, combined_data: CombinedInfo):
         headers = (
             ['Total']
             + list(map(str, sorted((
@@ -30,8 +30,7 @@ class EventSummary(BaseSummary):
             )),
         )
 
-    def get_header(self, combined_data: combined_discovery.CombinedInfo,
-                   header):
+    def get_header(self, combined_data: CombinedInfo, header):
         if header == 'Total':
             stars = combined_data.total_stars
         else:

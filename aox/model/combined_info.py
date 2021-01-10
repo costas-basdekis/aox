@@ -11,8 +11,18 @@ from typing import Dict, Optional
 
 import click
 
-from aox import site_discovery, local_discovery, BaseChallenge
+from aox import BaseChallenge
+from aox.model.repo_info import RepoInfo
+from aox.model.account_info import AccountInfo
 from aox.styling.shortcuts import e_error
+
+
+__all__ = [
+    'CombinedInfo',
+    'CombinedYearInfo',
+    'CombinedDayInfo',
+    'CombinedPartInfo',
+]
 
 
 @dataclass
@@ -31,8 +41,7 @@ class CombinedInfo:
 
     @classmethod
     def from_repo_and_account_infos(
-            cls, repo_info: local_discovery.RepoInfo,
-            account_info: Optional[site_discovery.AccountInfo]):
+            cls, repo_info: RepoInfo, account_info: Optional[AccountInfo]):
         """Main entry point: combine local and remote information"""
         years_with_code = sum(
             1
