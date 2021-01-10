@@ -10,7 +10,7 @@ import click
 import requests
 
 from .. import utils
-from ..site_discovery import SiteFetcher
+from ..site_discovery import WebAoc
 from ..styling.shortcuts import e_error, e_success, e_value, e_warn, e_star, \
     e_suggest
 from ..testing import testmod_with_filter
@@ -210,7 +210,7 @@ class BaseChallenge:
             f" (in {round(stats['duration'], 2)}s)")
 
     def submit(self, ctx, no_prompt=False, solution=None):
-        site_fetcher = SiteFetcher()
+        site_fetcher = WebAoc()
         if not site_fetcher.is_configured():
             click.echo(
                 f"You haven't set {e_error('AOC_SESSION_ID')} in "

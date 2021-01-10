@@ -184,7 +184,7 @@ def refresh_challenge_input(year, day):
         return
     input_path = challenges_root.joinpath(
         f"year_{year}", f"day_{day:0>2}", "part_a_input.txt")
-    _input = site_discovery.SiteFetcher().get_input_page(year, day)
+    _input = site_discovery.WebAoc().get_input_page(year, day)
     if not _input:
         click.echo(
             f"Could not update input for {e_error(f'{year} {day}')}")

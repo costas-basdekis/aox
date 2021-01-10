@@ -19,7 +19,7 @@ __all__ = [
     'AccountYearInfo',
     'AccountDayInfo',
     'AccountPartInfo',
-    'SiteFetcher',
+    'WebAoc',
 ]
 
 
@@ -34,13 +34,11 @@ class AccountInfo:
     username: str
     total_stars: int
     year_infos: Dict[int, 'AccountYearInfo'] = field(default_factory=dict)
-    fetcher: 'SiteFetcher' = field(default_factory=lambda: SiteFetcher())
 
     @classmethod
     def from_site(cls):
         """Scrape the site for the stars for each challenge"""
-        fetcher = SiteFetcher()
-        events_page = fetcher.get_events_page()
+        events_page = WebAoc().get_events_page()
         if not events_page:
             return None
 
@@ -50,7 +48,7 @@ class AccountInfo:
 
         total_stars = cls.get_total_stars(events_page)
 
-        account_info = cls(username, total_stars, fetcher=fetcher)
+        account_info = cls(username, total_stars)
         account_info.fill_years_from_site(events_page)
 
         return account_info
@@ -161,7 +159,7 @@ class AccountInfo:
             if stars
         ]
         for year, stars in years_and_stars:
-            year_info = AccountYearInfo(self, year, stars, fetcher=self.fetcher)
+            year_info = AccountYearInfo(self, year, stars)
             year_info.fill_days_from_site()
             self.year_infos[year] = year_info
 
@@ -241,7 +239,6 @@ class AccountYearInfo:
     year: int
     stars: int
     day_infos: Dict[int, 'AccountDayInfo'] = field(default_factory=dict)
-    fetcher: 'SiteFetcher' = field(default_factory=lambda: SiteFetcher())
 
     @classmethod
     def deserialise(cls, serialised, version, account_info):
@@ -294,7 +291,7 @@ class AccountYearInfo:
 
     def fill_days_from_site(self):
         """Parse the days information from the site"""
-        year_page = self.fetcher.get_year_page(self.year)
+        year_page = WebAoc().get_year_page(self.year)
         if year_page is None:
             return
 
@@ -541,38 +538,42 @@ class AccountPartInfo:
 
 
 @dataclass
-class SiteFetcher:
+class WebAoc:
     """
     Helper class that abstracts requests to the AOC site.
 
     The session ID is necessary before any request.
     """
     session_id: Optional[str] = field(
-        default_factory=lambda: SiteFetcher.get_session_id())
+        default_factory=lambda: WebAoc.get_session_id())
 
     root_url = 'https://adventofcode.com'
     headers = {
         "User-Agent": "aox",
     }
     cookies = {}
+    cached_session_id = NotImplemented
 
     @classmethod
     def get_session_id(cls):
         """Get the session ID from the settings"""
-        from aox.settings import settings
-        session_id = getattr(settings, 'AOC_SESSION_ID')
-        if not session_id:
-            if settings.is_missing:
-                click.echo(
-                    f"You haven't set {e_error('AOC_SESSION_ID')} - use "
-                    f"{e_suggest('aox init-settings')} to create your settings "
-                    f"file")
-            else:
-                click.echo(
-                    f"You haven't set {e_error('AOC_SESSION_ID')} in "
-                    f"{e_value('user_settings.py')}")
+        if cls.cached_session_id is NotImplemented:
+            from aox.settings import settings
+            session_id = getattr(settings, 'AOC_SESSION_ID')
+            if not session_id:
+                session_id = None
+                if settings.is_missing:
+                    click.echo(
+                        f"You haven't set {e_error('AOC_SESSION_ID')} - use "
+                        f"{e_suggest('aox init-settings')} to create your "
+                        f"settings file")
+                else:
+                    click.echo(
+                        f"You haven't set {e_error('AOC_SESSION_ID')} in "
+                        f"{e_value('user_settings.py')}")
+            cls.cached_session_id = session_id
 
-        return session_id
+        return cls.cached_session_id
 
     def is_configured(self):
         return bool(self.session_id)
