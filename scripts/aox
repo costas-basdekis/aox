@@ -1,3 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
+from aox.command_line.command import cli
 
-/usr/bin/env python3 -c "from aox.command_line.command import cli; cli()" "$@"
+cli()

@@ -13,7 +13,6 @@ from ..controller.controller import Controller
 def create_cli():
     controller = Controller(skip_combined_info=True)
 
-    # noinspection PyShadowingNames
     @click.group(invoke_without_command=True)
     @click.pass_context
     def aox(ctx):
