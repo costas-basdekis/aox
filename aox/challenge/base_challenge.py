@@ -304,8 +304,8 @@ class BaseChallenge:
                 click.echo(
                     f"Fetching {e_star('stars')} and updating "
                     f"{e_success('README')}...")
-                ctx.obj['aoc_ctx'].invoke(ctx.obj['aoc_module'].fetch)
-                ctx.obj['aoc_ctx'].invoke(ctx.obj['aoc_module'].update_readme)
+                ctx.obj['aox_controller'].fetch_account_info()
+                ctx.obj['aox_controller'].update_readme()
             else:
                 click.echo(
                     f"Make sure to do {e_suggest('aox fetch')} and "

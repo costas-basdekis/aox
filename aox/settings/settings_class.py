@@ -13,6 +13,7 @@ from aox.utils import load_module_from_path, get_current_directory
 @dataclass
 class Settings:
     is_missing: bool
+    path: Optional[Path]
     aoc_session_id: Optional['str'] = field(
         default=None,
         metadata={
@@ -48,7 +49,10 @@ class Settings:
     _warnings: Dict[str, Any] = field(
         default_factory=warnings.get_warnings_for_new_instance)
 
-    DEFAULT_PATH = Path('.aox/user_settings.py')
+    DEFAULT_SETTINGS_DIRECTORY = Path('.aox')
+    DEFAULT_PATH = DEFAULT_SETTINGS_DIRECTORY.joinpath('user_settings.py')
+    DEFAULT_SENSITIVE_USERS_PATH = DEFAULT_SETTINGS_DIRECTORY\
+        .joinpath('sensitive_user_settings.py')
     EXAMPLE_SETTINGS_DIRECTORY = \
         get_current_directory().joinpath('.example-aox')
 
@@ -66,12 +70,13 @@ class Settings:
                 f"default settings - use {e_suggest('aox init-settings')} to "
                 f"create your settings file")
             settings_module = None
-        return cls.from_settings_module(settings_module)
+        return cls.from_settings_module(settings_module, path)
 
     @classmethod
-    def from_settings_module(cls, settings_module):
+    def from_settings_module(cls, settings_module, path):
         return cls(
             is_missing=settings_module is None,
+            path=path,
             **{
                 _field.name: getattr(
                     settings_module,
