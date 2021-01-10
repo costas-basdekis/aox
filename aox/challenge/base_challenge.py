@@ -10,6 +10,7 @@ import click
 import requests
 
 from .. import utils
+from ..site_discovery import SiteFetcher
 from ..styling.shortcuts import e_error, e_success, e_value, e_warn, e_star, \
     e_suggest
 from ..testing import testmod_with_filter
@@ -209,8 +210,8 @@ class BaseChallenge:
             f" (in {round(stats['duration'], 2)}s)")
 
     def submit(self, ctx, no_prompt=False, solution=None):
-        session_id = getattr(settings, 'AOC_SESSION_ID')
-        if not session_id:
+        site_fetcher = SiteFetcher()
+        if not site_fetcher.is_configured():
             click.echo(
                 f"You haven't set {e_error('AOC_SESSION_ID')} in "
                 f"{e_error('user_settings.py')}")
@@ -254,20 +255,11 @@ class BaseChallenge:
             click.echo(f"{e_error('No solution')} was provided")
             return
 
-        response = requests.post(
-            f"https://adventofcode.com/{self.year}/day/{self.day}/answer",
-            cookies={"session": session_id},
-            headers={"User-Agent": "advent-of-code-submissions"},
-            data={"level": 1 if self.part == "a" else 2, "answer": solution}
-        )
-
-        if not response.ok:
-            click.echo(
-                f"There was {e_error('an error')} submitting the answer: "
-                f"{e_error(str(response.status_code))}")
+        answer_page = site_fetcher.submit_solution(
+            self.year, self.day, self.part, solution)
+        if not answer_page:
             return
 
-        answer_page = bs4.BeautifulSoup(response.text, "html.parser")
         message = answer_page.article.text
         if "That's the right answer" in message:
             click.echo(

@@ -574,6 +574,9 @@ class SiteFetcher:
 
         return session_id
 
+    def is_configured(self):
+        return bool(self.session_id)
+
     def get_events_page(self):
         """Get the page with stars per year"""
         return self.get_html('events', 'events information')
@@ -586,6 +589,14 @@ class SiteFetcher:
         """Get the input for a particular day"""
         return self.get_text(
             f"{year}/day/{day}/input", f"year {year} day {day} input")
+
+    def submit_solution(self, year, day, part, solution):
+        """Post a solution"""
+        return self.post_html(
+            f"{year}/day/{day}/answer", {
+                "level": 1 if part == "a" else 2,
+                "answer": solution,
+            }, f"year {year} day {day} input")
 
     def get_html(self, path, parse_name, *args, **kwargs):
         """Get parsed HTML"""
@@ -607,17 +618,24 @@ class SiteFetcher:
         """Submit a request"""
         return self.fetch(requests.post, *args, **kwargs)
 
+    def post_html(self, path, data, parse_name, *args, **kwargs):
+        """Post and return parsed HTML"""
+        return self.post(
+            path=path, data=data, parse_type='html', parse_name=parse_name,
+            *args, **kwargs)
+
     def fetch(self, method, path, extra_headers=None, extra_cookies=None,
-              parse_type=None, parse_name=None):
+              parse_type=None, parse_name=None, data=None):
         """
         Generic method for interacting with the site. It can also parse the the
         result as a particular type (eg HTML).
         """
-        if not self.session_id:
+        if not self.is_configured():
             return None
 
         response = method(
             f"{self.root_url}/{path}",
+            data=data,
             headers=self.get_headers(extra_headers),
             cookies=self.get_cookies(extra_cookies),
         )
