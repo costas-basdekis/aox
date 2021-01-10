@@ -27,8 +27,8 @@ def aox(ctx):
     ctx.obj = {}
     if not (ctx.invoked_subcommand and sys.argv[1:2] == 'init-settings'):
         update_context_object(ctx, {
-            'account_info': get_cached_site_data(),
-            'repo_info': get_repo_info(),
+            'account_info': site_discovery.AccountInfo.from_cache(),
+            'repo_info': local_discovery.RepoInfo.from_roots(),
         })
     if ctx.invoked_subcommand:
         return
@@ -42,16 +42,6 @@ def update_context_object(ctx, updates):
             ctx.obj['repo_info'], ctx.obj['account_info'])
 
 
-def get_cached_site_data():
-    if not settings.site_data_path:
-        return None
-
-    with settings.site_data_path.open() as f:
-        serialised = json.load(f)
-
-    return site_discovery.AccountInfo.deserialise(serialised)
-
-
 @aox.command()
 @click.pass_context
 def init_settings(ctx):
@@ -63,8 +53,8 @@ def init_settings(ctx):
             f"{e_value(str(user_settings_path))}. Will not overwrite them.")
 
         update_context_object(ctx, {
-            'account_info': get_cached_site_data(),
-            'repo_info': get_repo_info(),
+            'account_info': site_discovery.AccountInfo.from_cache(),
+            'repo_info': local_discovery.RepoInfo.from_roots(),
         })
         return
 
@@ -76,8 +66,8 @@ def init_settings(ctx):
         f"{e_value(str(dot_aox.joinpath('sensitive_user_settings.py')))}")
 
     update_context_object(ctx, {
-        'account_info': get_cached_site_data(),
-        'repo_info': get_repo_info(),
+        'account_info': site_discovery.AccountInfo.from_cache(),
+        'repo_info': local_discovery.RepoInfo.from_roots(),
     })
 
 
@@ -155,7 +145,7 @@ def add(ctx, year: int, day: int, part: str):
         f"{e_value(str(part_path))}")
 
     update_context_object(ctx, {
-        'repo_info': get_repo_info(),
+        'repo_info': local_discovery.RepoInfo.from_roots(),
     })
 
 
@@ -247,15 +237,10 @@ def list_days(combined_info: combined_discovery.CombinedInfo, year: int):
     click.echo(f"  * {days_string}")
 
 
-def get_repo_info() -> local_discovery.RepoInfo:
-    return local_discovery.RepoInfo.from_roots(
-        settings.challenges_root, settings.challenges_module_name_root)
-
-
 @aox.command()
 @click.pass_context
 def fetch(ctx):
-    account_info = get_account_info()
+    account_info = site_discovery.AccountInfo.from_site()
     if account_info is None:
         click.echo(f"Could {e_error('not fetch data')}")
         return
@@ -275,10 +260,6 @@ def fetch(ctx):
         f"Fetched data for {e_success(account_info.username)}: "
         f"{e_star(f'{star_count_text} stars')} in "
         f"{e_success(str(len(account_info.year_infos)))} years")
-
-
-def get_account_info() -> site_discovery.AccountInfo:
-    return site_discovery.AccountInfo.from_site()
 
 
 @aox.command()

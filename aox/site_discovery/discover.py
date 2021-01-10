@@ -3,7 +3,7 @@ Gather stars from the AOC site.
 
 The main entry point is `AccountInfo.from_site`
 """
-
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Dict, Optional
@@ -99,6 +99,16 @@ class AccountInfo:
 
         stars_text, = stars_match.groups()
         return int(stars_text)
+
+    @classmethod
+    def from_cache(cls):
+        if not settings.site_data_path:
+            return None
+
+        with settings.site_data_path.open() as f:
+            serialised = json.load(f)
+
+        return cls.deserialise(serialised)
 
     @classmethod
     def deserialise(cls, serialised):

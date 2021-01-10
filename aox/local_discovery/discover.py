@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Dict, Optional
 
+from aox.settings import settings
+
 
 @dataclass
 class RepoInfo:
@@ -30,8 +32,12 @@ class RepoInfo:
     YEARS = list(range(2015, datetime.datetime.now().year + 1))
 
     @classmethod
-    def from_roots(cls, challenges_root, challenges_module_name_root):
+    def from_roots(cls, challenges_root=None, challenges_module_name_root=None):
         """Create a tree structure, by looking for the expected filenames"""
+        if challenges_root is None:
+            challenges_root = settings.challenges_root
+        if challenges_module_name_root is None:
+            challenges_module_name_root = settings.challenges_module_name_root
         repo_info = cls(
             challenges_root=challenges_root,
             challenges_module_name_root=challenges_module_name_root,
