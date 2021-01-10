@@ -10,7 +10,7 @@ import click
 
 from .. import local_discovery, site_discovery, combined_discovery
 from ..settings import settings
-from ..settings.loader import EXAMPLE_SETTINGS_DIRECTORY
+from ..settings.settings_class import Settings
 from ..styling.shortcuts import e_success, e_value, e_warn, e_error, \
     e_suggest, e_star, e_unable
 from ..summary import summary_registry
@@ -43,10 +43,10 @@ def update_context_object(ctx, updates):
 
 
 def get_cached_site_data():
-    if not settings.SITE_DATA_PATH or not settings.SITE_DATA_PATH.exists():
+    if not settings.site_data_path:
         return None
 
-    with settings.SITE_DATA_PATH.open() as f:
+    with settings.site_data_path.open() as f:
         serialised = json.load(f)
 
     return site_discovery.AccountInfo.deserialise(serialised)
@@ -68,7 +68,8 @@ def init_settings(ctx):
         })
         return
 
-    distutils.dir_util.copy_tree(EXAMPLE_SETTINGS_DIRECTORY, str(dot_aox))
+    distutils.dir_util.copy_tree(
+        Settings.EXAMPLE_SETTINGS_DIRECTORY, str(dot_aox))
     click.echo(
         f"Initialised {e_success('user settings')} at {e_value(str(dot_aox))}! "
         f"You should now edit {e_value(str(user_settings_path))} and "
@@ -122,7 +123,7 @@ def challenge(ctx, year: int, day: int, part: str, force: bool, rest):
 @click.argument('part', type=click.Choice(['a', 'b']))
 @click.pass_context
 def add(ctx, year: int, day: int, part: str):
-    challenges_root = get_challenges_root()
+    challenges_root = settings.challenges_root
     if not challenges_root:
         return
     year_path = challenges_root.joinpath(f"year_{year}")
@@ -158,28 +159,11 @@ def add(ctx, year: int, day: int, part: str):
     })
 
 
-def get_challenges_root():
-    challenges_root: Path = settings.CHALLENGES_ROOT
-    if not challenges_root:
-        if settings.is_missing:
-            click.echo(
-                f"You haven't set {e_error('CHALLENGES_ROOT')} - use "
-                f"{e_suggest('aox init-settings')} to create your settings "
-                f"file")
-        else:
-            click.echo(
-                f"You haven't set {e_error('CHALLENGES_ROOT')} in "
-                f"{e_value('user_settings.py')}")
-        return None
-
-    return challenges_root
-
-
 @aox.command()
 @click.argument('year', type=int)
 @click.argument('day', type=int)
 def refresh_challenge_input(year, day):
-    challenges_root = get_challenges_root()
+    challenges_root = settings.challenges_root
     if not challenges_root:
         return
     input_path = challenges_root.joinpath(
@@ -220,6 +204,8 @@ def list_years(combined_info: combined_discovery.CombinedInfo):
         f"{e_star(str(combined_info.total_stars) + ' stars')}:")
     for year, year_info in sorted(
             combined_info.year_infos.items(), reverse=True):
+        if not year_info.days_with_code and not year_info.stars:
+            continue
         click.echo(
             f"  * {e_success(str(year))}: "
             f"{e_success(str(year_info.days_with_code))} days with code and "
@@ -236,14 +222,14 @@ STATUS_ICON_MAP = {
 
 
 def list_days(combined_info: combined_discovery.CombinedInfo, year: int):
-    if year not in combined_info.year_infos:
-        click.echo(f"Could not find {e_error(year)} in code nor any stars")
-        return
     year_info: combined_discovery.CombinedYearInfo = \
-        combined_info.year_infos[year]
+        combined_info.year_infos.get(year)
+    if not year_info or (not year_info.days_with_code and not year_info.stars):
+        click.echo(f"Could not find {e_error(str(year))} in code nor any stars")
+        return
     if not year_info.days_with_code:
         click.echo(
-            f"Could not find {e_error(year)} in code, but found "
+            f"Could not find {e_error(str(year))} in code, but found "
             f"{e_star(f'{year_info.stars} stars')}")
         return
     click.echo(
@@ -263,7 +249,7 @@ def list_days(combined_info: combined_discovery.CombinedInfo, year: int):
 
 def get_repo_info() -> local_discovery.RepoInfo:
     return local_discovery.RepoInfo.from_roots(
-        get_challenges_root(), settings.CHALLENGES_MODULE_NAME_ROOT)
+        settings.challenges_root, settings.challenges_module_name_root)
 
 
 @aox.command()
@@ -274,8 +260,8 @@ def fetch(ctx):
         click.echo(f"Could {e_error('not fetch data')}")
         return
 
-    if settings.SITE_DATA_PATH:
-        with settings.SITE_DATA_PATH.open('w') as f:
+    if settings.site_data_path:
+        with settings.site_data_path.open('w') as f:
             json.dump(account_info.serialise(), f, indent=2)
 
     if not account_info.username:
@@ -298,7 +284,7 @@ def get_account_info() -> site_discovery.AccountInfo:
 @aox.command()
 @click.pass_context
 def update_readme(ctx):
-    readme_path = get_readme_path()
+    readme_path = settings.readme_path
     if not readme_path:
         return
     combined_info = ctx.obj["combined_info"]
@@ -319,20 +305,3 @@ def update_readme(ctx):
 
     readme_path.write_text(updated_readme_text)
     click.echo(f"Updated {e_success('README')} with site data")
-
-
-def get_readme_path():
-    readme_path: Path = settings.README_PATH
-    if not readme_path:
-        if settings.is_missing:
-            click.echo(
-                f"You haven't set {e_error('README_PATH')} - use "
-                f"{e_suggest('aox init-settings')} to create your settings "
-                f"file")
-        else:
-            click.echo(
-                f"You haven't set {e_error('README_PATH')} in "
-                f"{e_value('user_settings.py')}")
-        return None
-
-    return readme_path

@@ -12,7 +12,8 @@ import bs4
 import click
 import requests
 
-from aox.styling.shortcuts import e_error, e_suggest, e_value
+from aox.settings import settings
+from aox.styling.shortcuts import e_error
 
 __all__ = [
     'AccountInfo',
@@ -545,35 +546,13 @@ class WebAoc:
     The session ID is necessary before any request.
     """
     session_id: Optional[str] = field(
-        default_factory=lambda: WebAoc.get_session_id())
+        default_factory=lambda: settings.aoc_session_id)
 
     root_url = 'https://adventofcode.com'
     headers = {
         "User-Agent": "aox",
     }
     cookies = {}
-    cached_session_id = NotImplemented
-
-    @classmethod
-    def get_session_id(cls):
-        """Get the session ID from the settings"""
-        if cls.cached_session_id is NotImplemented:
-            from aox.settings import settings
-            session_id = getattr(settings, 'AOC_SESSION_ID')
-            if not session_id:
-                session_id = None
-                if settings.is_missing:
-                    click.echo(
-                        f"You haven't set {e_error('AOC_SESSION_ID')} - use "
-                        f"{e_suggest('aox init-settings')} to create your "
-                        f"settings file")
-                else:
-                    click.echo(
-                        f"You haven't set {e_error('AOC_SESSION_ID')} in "
-                        f"{e_value('user_settings.py')}")
-            cls.cached_session_id = session_id
-
-        return cls.cached_session_id
 
     def is_configured(self):
         return bool(self.session_id)
