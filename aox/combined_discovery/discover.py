@@ -351,6 +351,10 @@ class CombinedPartInfo:
     def day(self):
         return self.day_info.day
 
+    @property
+    def is_final_part(self):
+        return (self.day, self.part) == (25, "b")
+
     def __post_init__(self):
         self.update_status()
 

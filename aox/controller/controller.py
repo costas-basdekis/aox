@@ -20,7 +20,8 @@ from aox.site_discovery import AccountInfo, WebAoc
 from aox.styling.shortcuts import e_warn, e_value, e_success, e_star, e_error, \
     e_unable, e_suggest
 from aox.summary import summary_registry
-from aox.utils import get_current_directory
+from aox.testing.doctest_enhanced_testmod import testmod_with_filter
+from aox.utils import get_current_directory, time_it
 
 current_directory = get_current_directory()
 
@@ -239,26 +240,235 @@ class Controller:
 
         self.update_combined_info(repo_info=RepoInfo.from_roots())
 
-    def challenge(self, year: int, day: int, part: str, force: bool, rest):
+    def challenge(self, year, day, part, force, rest):
         """Invoke a challenge"""
-        challenge_instance = self.combined_info.get_challenge_instance(
-            year, day, part)
+        challenge_instance = self.get_or_create_challenge(
+            year, day, part, force)
         if not challenge_instance:
-            if not force:
-                should_create_challenge = click.prompt(
-                    f"Do you want to create challenge "
-                    f"{e_value(f'{year} {day} {part.upper()}')}?",
-                    type=bool, default=True)
-            else:
-                should_create_challenge = True
-            if not should_create_challenge:
-                return
-            self.add_challenge(year=year, day=day, part=part)
-            challenge_instance = self.combined_info \
-                .get_challenge_instance(year, day, part)
+            return
         challenge_instance.run_main_arguments(args=rest, obj={
             'aox_controller': self,
         })
+
+    def test_and_run_challenge(self, year, day, part, force, filters_texts,
+                               debug):
+        challenge_instance = self.get_or_create_challenge(
+            year, day, part, force)
+        if not challenge_instance:
+            return
+        self.test_challenge(year, day, part, force, filters_texts)
+        self.run_challenge(year, day, part, force, debug)
+
+    def test_challenge(self, year, day, part, force, filters_texts):
+        challenge_instance = self.get_or_create_challenge(
+            year, day, part, force)
+        if not challenge_instance:
+            return
+        filters_text = " ".join(filters_texts)
+        test_modules = challenge_instance.get_test_modules()
+        with time_it() as stats:
+            results = [
+                (module,
+                 testmod_with_filter(
+                     module, optionflags=challenge_instance.optionflags,
+                     filters_text=filters_text))
+                for module in test_modules
+            ]
+        total_attempted = sum(result.attempted for _, result in results)
+        total_failed = sum(result.failed for _, result in results)
+        failed_modules = [
+            module.__name__
+            if module else
+            'main'
+            for module, result in results
+            if result.failed
+        ]
+        if failed_modules:
+            click.echo(
+                f"{e_error(f'{total_failed}/{total_attempted} tests')} "
+                f"in {len(failed_modules)}/{len(test_modules)} modules "
+                f"{e_error('failed')} "
+                f"in {round(stats['duration'], 2)}s"
+                f": {e_error(', '.join(failed_modules))}")
+        else:
+            click.echo(
+                f"{total_attempted} tests "
+                f"in {len(test_modules)} modules "
+                f"{e_success('passed')} "
+                f"in {round(stats['duration'], 2)}s")
+
+    def run_challenge(self, year, day, part, force, debug):
+        challenge_instance = self.get_or_create_challenge(
+            year, day, part, force)
+        if not challenge_instance:
+            return
+        with time_it() as stats:
+            solution = challenge_instance.default_solve(debug=debug)
+        if solution is None:
+            styled_solution = e_error(str(solution))
+        else:
+            styled_solution = e_value(str(solution))
+        click.echo(
+            f"Solution: {styled_solution}"
+            f" (in {round(stats['duration'], 2)}s)")
+
+    def play_challenge(self, year, day, part, force):
+        challenge_instance = self.get_or_create_challenge(
+            year, day, part, force)
+        if not challenge_instance:
+            return
+        challenge_instance.play()
+
+    def get_and_submit_challenge_solution(self, year, day, part, force,
+                                          no_prompt, solution):
+        challenge_instance = self.get_or_create_challenge(
+            year, day, part, force)
+        if not challenge_instance:
+            return
+        if not WebAoc().is_configured():
+            click.echo(
+                f"You haven't set {e_error('AOC_SESSION_ID')} in "
+                f"{e_error('user_settings.py')}")
+            return None
+
+        solution = self.get_solution(
+            challenge_instance, year, day, part, no_prompt, solution)
+        if solution is None:
+            return
+
+        self.submit_challenge_solution(
+            year, day, part, force, no_prompt, solution)
+
+    def submit_challenge_solution(self, year, day, part, force, no_prompt,
+                                  solution):
+        challenge_instance = self.get_or_create_challenge(
+            year, day, part, force)
+        if not challenge_instance:
+            return
+        answer_page = WebAoc().submit_solution(year, day, part, solution)
+        if not answer_page:
+            return
+
+        message = answer_page.article.text
+        is_final_part = self.combined_info\
+            .get_part(year, day, part).is_final_part
+        if "That's the right answer" in message:
+            click.echo(
+                f"Congratulations! That was {e_success('the right answer')}!\n"
+                f"{message}")
+            success = True
+        elif "Did you already complete it" in message:
+            click.echo(
+                f"It looks like you have {e_warn('already completed it')}:\n"
+                f"{message}")
+            success = False
+        elif "That's not the right answer" in message:
+            click.echo(
+                f"It looks like {e_value(solution)} was the "
+                f"{e_error('wrong answer')}:\n {message}")
+            success = False
+        elif "You gave an answer too recently" in message:
+            click.echo(
+                f"It looks like you need {e_warn('to wait a bit')}:\n{message}")
+            success = False
+        elif is_final_part and 'congratulations' in message.lower():
+            click.echo(
+                f"Congratulations! "
+                f"{e_success('You completed the whole year!')}!\n"
+                f"{message}")
+            success = True
+        else:
+            click.echo(
+                f"It's not clear {e_warn('what was the response')}:\n{message}")
+            success = False
+
+        if success:
+            if no_prompt:
+                fetch_and_update_readme = True
+            else:
+                fetch_and_update_readme = click.prompt(
+                    f"Do you want to {e_success('fetch stars')} and "
+                    f"{e_success('update the README')}?",
+                    type=bool, default=True)
+            if fetch_and_update_readme:
+                click.echo(
+                    f"Fetching {e_star('stars')} and updating "
+                    f"{e_success('README')}...")
+                self.fetch_account_info()
+                self.update_readme()
+            else:
+                click.echo(
+                    f"Make sure to do {e_suggest('aox fetch')} and "
+                    f"{e_suggest('aox update-readme')}")
+
+    def get_solution(self, challenge_instance, day, year, part, no_prompt,
+                     solution):
+        is_final_part = self.combined_info\
+            .get_part(year, day, part).is_final_part
+        if no_prompt or solution not in (None, ""):
+            if is_final_part:
+                solve_first = False
+                if solution in (None, ""):
+                    solution = "1"
+            else:
+                solve_first = solution in (None, "")
+        else:
+            if is_final_part:
+                default_solution = "1"
+            else:
+                default_solution = ""
+            solution = click.prompt(
+                "Run to get the solution, or enter it manually?",
+                default=default_solution)
+            solve_first = not solution
+
+        if solve_first:
+            solution = challenge_instance.default_solve()
+        if solution in (None, ""):
+            click.echo(f"{e_error('No solution')} was provided")
+            return None
+        solution = str(solution)
+
+        if not no_prompt:
+            old_solution = None
+            while old_solution != solution:
+                old_solution = solution
+                solution = click.prompt(
+                    f"Submitting solution {e_value(solution)}",
+                    default=solution)
+        else:
+            click.echo(
+                f"Submitting solution {e_value(solution)}")
+        if solution in (None, ""):
+            click.echo(f"{e_error('No solution')} was provided")
+            return None
+
+        return solution
+
+    def get_or_create_challenge(self, year, day, part, force):
+        challenge_instance = self.combined_info\
+            .get_challenge_instance(year, day, part)
+        if not challenge_instance:
+            if not self.add_challenge_if_agreed(year, day, part, force):
+                return
+            challenge_instance = self.combined_info \
+                .get_challenge_instance(year, day, part)
+        return challenge_instance
+
+    def add_challenge_if_agreed(self, year: int, day: int, part: str,
+                                force: bool):
+        if not force:
+            should_create_challenge = click.prompt(
+                f"Do you want to create challenge "
+                f"{e_value(f'{year} {day} {part.upper()}')}?",
+                type=bool, default=True)
+        else:
+            should_create_challenge = True
+        if not should_create_challenge:
+            return False
+        self.add_challenge(year=year, day=day, part=part)
+
+        return True
 
     def reload_combined_info(self):
         """Reload all data from the disk"""
