@@ -19,6 +19,7 @@ __all__ = [
     'AccountYearInfo',
     'AccountDayInfo',
     'AccountPartInfo',
+    'SiteFetcher',
 ]
 
 
@@ -581,10 +582,21 @@ class SiteFetcher:
         """Get the page with stars per day"""
         return self.get_html(f"{year}", f"year {year} information")
 
+    def get_input_page(self, year, day):
+        """Get the input for a particular day"""
+        return self.get_text(
+            f"{year}/day/{day}/input", f"year {year} day {day} input")
+
     def get_html(self, path, parse_name, *args, **kwargs):
         """Get parsed HTML"""
         return self.get(
             path=path, parse_type='html', parse_name=parse_name,
+            *args, **kwargs)
+
+    def get_text(self, path, parse_name, *args, **kwargs):
+        """Get raw text"""
+        return self.get(
+            path=path, parse_type='text', parse_name=parse_name,
             *args, **kwargs)
 
     def get(self, *args, **kwargs):
@@ -634,6 +646,8 @@ class SiteFetcher:
         """Parse a response as a particular type (eg HTML)"""
         if _type == 'html':
             return self.as_html(response, name)
+        if _type == 'text':
+            return self.as_text(response, name)
         else:
             raise Exception(f"Unknown parse type '{_type}'")
 
@@ -650,3 +664,17 @@ class SiteFetcher:
             return None
 
         return bs4.BeautifulSoup(response.text, "html.parser")
+
+    def as_text(self, response, name):
+        """Parse a response as text"""
+        if not response:
+            return None
+
+        if not response.ok:
+            click.echo(
+                f"Could not get {e_error(name)} from the AOC site "
+                f"({response.status_code}) - is the internet down, AOC down, "
+                f"the URL is wrong, or are you banned?")
+            return None
+
+        return response.text

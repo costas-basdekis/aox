@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import click
-import requests
 
 from .. import local_discovery, site_discovery, combined_discovery
 from ..settings import settings
@@ -185,7 +184,7 @@ def refresh_challenge_input(year, day):
         return
     input_path = challenges_root.joinpath(
         f"year_{year}", f"day_{day:0>2}", "part_a_input.txt")
-    _input = get_input_from_site(year, day)
+    _input = site_discovery.SiteFetcher().get_input_page(year, day)
     if not _input:
         click.echo(
             f"Could not update input for {e_error(f'{year} {day}')}")
@@ -200,50 +199,8 @@ def refresh_challenge_input(year, day):
     input_path.write_text(_input)
 
     click.echo(
-        f"Updated input for {e_success(f'{year} {day}')} at "
-        f"{e_value(str(input_path))} ({e_value(f'{len(_input)} bytes')})")
-
-
-def get_input_from_site(year, day):
-    session_id = get_session_id()
-    if not session_id:
-        return None
-
-    response = requests.get(
-        f'https://adventofcode.com/{year}/day/{day}/input',
-        cookies={"session": session_id},
-        headers={"User-Agent": "aox"},
-    )
-    if not response.ok:
-        if response.status_code == 404:
-            click.echo(
-                f"AOC did not know about challenge's "
-                f"{e_error(f'{year} {day}')} input: did you enter the wrong "
-                f"year/day, is the URL wrong, or are you banned?")
-        else:
-            click.echo(
-                f"Could not get {e_error('the input')} from AOC site - is the "
-                f"internet down, AOC down, the URL is wrong, or are you "
-                f"banned?")
-        return None
-
-    return response.text
-
-
-def get_session_id():
-    session_id = getattr(settings, 'AOC_SESSION_ID')
-    if not session_id:
-        if settings.is_missing:
-            click.echo(
-                f"You haven't set {e_error('AOC_SESSION_ID')} - use "
-                f"{e_suggest('aox init-settings')} to create your settings "
-                f"file")
-        else:
-            click.echo(
-                f"You haven't set {e_error('AOC_SESSION_ID')} in "
-                f"{e_value('user_settings.py')}")
-
-    return session_id
+        f"Updated input for {e_success(f'{year} {day}')} "
+        f"({e_value(f'{len(_input)} bytes')}) at {e_value(str(input_path))}")
 
 
 @aox.command(name='list')
