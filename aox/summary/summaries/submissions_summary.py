@@ -1,8 +1,8 @@
 from aox import utils
 from aox.model import CombinedDayInfo, CombinedYearInfo, CombinedPartInfo, \
     CombinedInfo
-from aox.settings import settings
 from aox.summary.base_summary import BaseSummary, summary_registry
+from aox.web import WebAoc
 
 
 __all__ = ['SubmissionsSummary']
@@ -92,22 +92,24 @@ class SubmissionsSummary(BaseSummary):
             year_stars,
         ] + day_links_list
 
-        aligned_table_rows = utils.align_rows(table_rows)
+        table = utils.join_rows(table_rows)
 
         table = "\n".join(
             f"| {' | '.join(row)} |"
             for row in aligned_table_rows
         )
 
+        web_aoc = WebAoc()
+
         link_definitions = "\n\n".join(
             "\n".join([
-                f"[ch-{str(year)[-2:]}]: https://adventofcode.com/{year}",
+                f"[ch-{str(year)[-2:]}]: {web_aoc.get_year_url(year)}",
                 f"[co-{str(year)[-2:]}]: "
                 f"{combined_data.get_year(year).relative_path}",
             ] + sum((
                 [
                     f"[ch-{str(year)[-2:]}-{day:0>2}]: "
-                    f"https://adventofcode.com/{year}/day/{day}",
+                    f"{web_aoc.get_day_url(year, day)}",
                     f"[co-{str(year)[-2:]}-{day:0>2}]: "
                     f"{combined_data.get_day(year, day).relative_path}",
                 ]

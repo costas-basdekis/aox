@@ -28,40 +28,56 @@ class WebAoc:
     }
     cookies = {}
 
+    def get_events_url(self):
+        return f"{self.root_url}/events"
+
+    def get_year_url(self, year):
+        return f"{self.root_url}/{year}"
+
+    def get_day_url(self, year, day):
+        return f"{self.root_url}/{year}/day/{day}"
+
+    def get_input_url(self, year, day):
+        return f"{self.root_url}/{year}/day/{day}/input"
+
+    def get_answer_url(self, year, day):
+        return f"{self.root_url}/{year}/day/{day}/answer"
+
     def is_configured(self):
         return bool(self.session_id)
 
     def get_events_page(self):
         """Get the page with stars per year"""
-        return self.get_html('events', 'events information')
+        return self.get_html(self.get_events_url(), 'events information')
 
     def get_year_page(self, year):
         """Get the page with stars per day"""
-        return self.get_html(f"{year}", f"year {year} information")
+        return self.get_html(
+            self.get_year_url(year), f"year {year} information")
 
     def get_input_page(self, year, day):
         """Get the input for a particular day"""
         return self.get_text(
-            f"{year}/day/{day}/input", f"year {year} day {day} input")
+            self.get_input_url(year, day), f"year {year} day {day} input")
 
     def submit_solution(self, year, day, part, solution):
         """Post a solution"""
         return self.post_html(
-            f"{year}/day/{day}/answer", {
+            self.get_answer_url(year, day), {
                 "level": 1 if part == "a" else 2,
                 "answer": solution,
             }, f"year {year} day {day} input")
 
-    def get_html(self, path, parse_name, *args, **kwargs):
+    def get_html(self, url, parse_name, *args, **kwargs):
         """Get parsed HTML"""
         return self.get(
-            path=path, parse_type='html', parse_name=parse_name,
+            url=url, parse_type='html', parse_name=parse_name,
             *args, **kwargs)
 
-    def get_text(self, path, parse_name, *args, **kwargs):
+    def get_text(self, url, parse_name, *args, **kwargs):
         """Get raw text"""
         return self.get(
-            path=path, parse_type='text', parse_name=parse_name,
+            url=url, parse_type='text', parse_name=parse_name,
             *args, **kwargs)
 
     def get(self, *args, **kwargs):
@@ -72,13 +88,13 @@ class WebAoc:
         """Submit a request"""
         return self.fetch(requests.post, *args, **kwargs)
 
-    def post_html(self, path, data, parse_name, *args, **kwargs):
+    def post_html(self, url, data, parse_name, *args, **kwargs):
         """Post and return parsed HTML"""
         return self.post(
-            path=path, data=data, parse_type='html', parse_name=parse_name,
+            url=url, data=data, parse_type='html', parse_name=parse_name,
             *args, **kwargs)
 
-    def fetch(self, method, path, extra_headers=None, extra_cookies=None,
+    def fetch(self, method, url, extra_headers=None, extra_cookies=None,
               parse_type=None, parse_name=None, data=None):
         """
         Generic method for interacting with the site. It can also parse the the
@@ -87,8 +103,13 @@ class WebAoc:
         if not self.is_configured():
             return None
 
+        if not url.startswith(self.root_url):
+            raise Exception(
+                f"Only AOC URLs can be accessed (starting with "
+                f"'{self.root_url}'), not '{url}'")
+
         response = method(
-            f"{self.root_url}/{path}",
+            url,
             data=data,
             headers=self.get_headers(extra_headers),
             cookies=self.get_cookies(extra_cookies),
