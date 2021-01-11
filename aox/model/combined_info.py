@@ -7,6 +7,7 @@ The main entry point is `CombinedInfo.from_repo_and_account_infos`.
 import importlib
 import itertools
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, Optional
 
 import click
@@ -14,6 +15,7 @@ import click
 from aox import BaseChallenge
 from aox.model.repo_info import RepoInfo
 from aox.model.account_info import AccountInfo
+from aox.settings import settings
 from aox.styling.shortcuts import e_error
 
 
@@ -77,10 +79,12 @@ class CombinedInfo:
                 year_info = self.year_infos[account_year_info.year]
                 year_info.stars = account_year_info.stars
             else:
+                # noinspection PyTypeChecker
                 year_info = CombinedYearInfo(
                     combined_info=self,
                     year=account_year_info.year,
                     stars=account_year_info.stars,
+                    path=None,
                     days_with_code=0,
                 )
                 self.year_infos[account_year_info.year] = year_info
@@ -99,12 +103,14 @@ class CombinedInfo:
             )
             if repo_year_info.year in self.year_infos:
                 year_info = self.year_infos[repo_year_info.year]
+                year_info.path = repo_year_info.path
                 year_info.days_with_code = days_with_code
             else:
                 year_info = CombinedYearInfo(
                     combined_info=self,
                     year=repo_year_info.year,
                     stars=0,
+                    path=repo_year_info.path,
                     days_with_code=days_with_code,
                 )
                 self.year_infos[repo_year_info.year] = year_info
@@ -116,14 +122,28 @@ class CombinedInfo:
             return None
         return part_info.get_challenge_instance()
 
-    def get_part(self, year, day, part) \
-            -> Optional['CombinedPartInfo']:
+    def get_year(self, year) \
+            -> Optional['CombinedYearInfo']:
         year_info = self.year_infos.get(year)
         if not year_info:
             click.echo(
                 f"It looks like there is no code for {e_error(str(year))}")
             return None
-        return year_info.get_part(day, part)
+        return year_info
+
+    def get_day(self, year, day) \
+            -> Optional['CombinedDayInfo']:
+        year_info = self.get_year(year)
+        if not year_info:
+            return None
+        return year_info.get_day(day)
+
+    def get_part(self, year, day, part) \
+            -> Optional['CombinedPartInfo']:
+        day_info = self.get_day(year, day)
+        if not day_info:
+            return None
+        return day_info.get_part(part)
 
     def serialise(self):
         return {
@@ -148,6 +168,7 @@ class CombinedYearInfo(object):
     combined_info: CombinedInfo
     year: int
     stars: int
+    path: Path
     days_with_code: int
     day_infos: Dict[int, 'CombinedDayInfo'] = field(default_factory=dict)
     counts_by_part_status: Dict[str, int] = field(
@@ -162,6 +183,10 @@ class CombinedYearInfo(object):
             for status in CombinedPartInfo.STATUSES
         }
 
+    @property
+    def relative_path(self):
+        return self.path.relative_to(settings.challenges_root)
+
     def amend_days_from_account_year_info(self, account_year_info):
         """
         Called after creating the instance, to populate the days with remote
@@ -172,10 +197,12 @@ class CombinedYearInfo(object):
                 day_info = self.day_infos[account_day_info.day]
                 day_info.stars = account_day_info.stars
             else:
+                # noinspection PyTypeChecker
                 day_info = CombinedDayInfo(
                     year_info=self,
                     day=account_day_info.day,
                     stars=account_day_info.stars,
+                    path=None,
                     parts_with_code=0,
                 )
                 self.day_infos[account_day_info.day] = day_info
@@ -195,12 +222,14 @@ class CombinedYearInfo(object):
             )
             if repo_day_info.day in self.day_infos:
                 day_info = self.day_infos[repo_day_info.day]
+                day_info.path = repo_day_info.path
                 day_info.parts_with_code = parts_with_code
             else:
                 day_info = CombinedDayInfo(
                     year_info=self,
                     day=repo_day_info.day,
                     stars=0,
+                    path=repo_day_info.path,
                     parts_with_code=parts_with_code,
                 )
                 self.day_infos[repo_day_info.day] = day_info
@@ -224,12 +253,18 @@ class CombinedYearInfo(object):
             },
         })
 
-    def get_part(self, day, part) -> Optional['CombinedPartInfo']:
+    def get_day(self, day) -> Optional['CombinedDayInfo']:
         day_info = self.day_infos.get(day)
         if not day_info:
             click.echo(
                 f"It looks like there is no code for "
                 f"{e_error(f'{self.year} day {day}')}")
+            return None
+        return day_info
+
+    def get_part(self, day, part) -> Optional['CombinedPartInfo']:
+        day_info = self.get_day(day)
+        if not day_info:
             return None
         return day_info.get_part(part)
 
@@ -255,12 +290,17 @@ class CombinedDayInfo:
     year_info: CombinedYearInfo
     day: int
     stars: int
+    path: Path
     parts_with_code: int
     part_infos: Dict[str, 'CombinedPartInfo'] = field(default_factory=dict)
 
     @property
     def year(self):
         return self.year_info.year
+
+    @property
+    def relative_path(self):
+        return self.path.relative_to(settings.challenges_root)
 
     def amend_parts_from_account_day_info(self, account_day_info):
         """
@@ -273,11 +313,13 @@ class CombinedDayInfo:
                 part_info.has_star = account_part_info.has_star
                 part_info.update_status()
             else:
+                # noinspection PyTypeChecker
                 part_info = CombinedPartInfo(
                     day_info=self,
                     part=account_part_info.part,
                     has_star=account_part_info.has_star,
                     has_code=False,
+                    path=None,
                     status=CombinedPartInfo.STATUS_UNKNOWN,
                     module_name='',
                 )
@@ -291,6 +333,7 @@ class CombinedDayInfo:
         for repo_part_info in repo_day_info.part_infos.values():
             if repo_part_info.part in self.part_infos:
                 part_info = self.part_infos[repo_part_info.part]
+                part_info.path = repo_part_info.path
                 part_info.has_code = repo_part_info.has_code
                 part_info.module_name = repo_part_info.module_name
             else:
@@ -298,6 +341,7 @@ class CombinedDayInfo:
                     day_info=self,
                     part=repo_part_info.part,
                     has_star=False,
+                    path=repo_part_info.path,
                     has_code=repo_part_info.has_code,
                     status=CombinedPartInfo.STATUS_UNKNOWN,
                     module_name=repo_part_info.module_name,
@@ -337,6 +381,7 @@ class CombinedPartInfo:
     has_star: bool
     has_code: bool
     status: str
+    path: Path
     module_name: str
 
     STATUS_UNKNOWN = 'unknown'
@@ -363,6 +408,10 @@ class CombinedPartInfo:
     @property
     def is_final_part(self):
         return (self.day, self.part) == (25, "b")
+
+    @property
+    def relative_path(self):
+        return self.path.relative_to(settings.challenges_root)
 
     def __post_init__(self):
         self.update_status()

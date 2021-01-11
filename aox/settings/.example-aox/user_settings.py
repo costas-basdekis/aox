@@ -1,9 +1,7 @@
-import os
-from pathlib import Path
-
 import aox.utils
+from aox.utils import get_current_directory
 
-dot_aox = Path(os.path.dirname(os.path.realpath(__file__)))
+dot_aox = get_current_directory()
 repo_root = dot_aox.parent
 sensitive_user_settings = aox.utils.load_module_from_path(
     dot_aox.joinpath('sensitive_user_settings.py'))
@@ -27,6 +25,14 @@ CHALLENGES_MODULE_NAME_ROOT = None
 """
 The name of the module under which the challenges leave. If there is no parent
 module (or it is the root one) you can leave it as `None`.
+"""
+
+CHALLENGES_BOILERPLATE = "aox.boilerplate.DefaultBoilerplate"
+"""
+The name of the class that knows where individual challenges are on the disk,
+and knows how to create them.
+
+This can be either a class, or the full class name, or an instance
 """
 
 SITE_DATA_PATH = dot_aox.joinpath('site_data.json')

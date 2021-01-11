@@ -8,10 +8,14 @@ All work is delegated to `Controller`.
 import click
 
 from ..controller.controller import Controller
+from ..settings.settings_class import InvalidSettingsError
 
 
 def create_cli():
-    controller = Controller(skip_combined_info=True)
+    try:
+        controller = Controller(skip_combined_info=True)
+    except InvalidSettingsError:
+        return lambda: None
 
     @click.group(invoke_without_command=True)
     @click.pass_context
@@ -50,7 +54,8 @@ def create_cli():
     @click.pass_context
     def refresh_input(ctx):
         params = ctx.parent.params
-        controller.refresh_challenge_input(params['year'], params['day'])
+        controller.refresh_challenge_input(
+            params['year'], params['day'], only_if_empty=False)
 
     @challenge.command(name="all")
     @click.option('--test', '-t', 'filters_texts', multiple=True)

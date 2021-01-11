@@ -1,6 +1,7 @@
 from aox import utils
 from aox.model import CombinedDayInfo, CombinedYearInfo, CombinedPartInfo, \
     CombinedInfo
+from aox.settings import settings
 from aox.summary.base_summary import BaseSummary, summary_registry
 
 
@@ -101,13 +102,14 @@ class SubmissionsSummary(BaseSummary):
         link_definitions = "\n\n".join(
             "\n".join([
                 f"[ch-{str(year)[-2:]}]: https://adventofcode.com/{year}",
-                f"[co-{str(year)[-2:]}]: year_{year}",
+                f"[co-{str(year)[-2:]}]: "
+                f"{combined_data.get_year(year).relative_path}",
             ] + sum((
                 [
                     f"[ch-{str(year)[-2:]}-{day:0>2}]: "
                     f"https://adventofcode.com/{year}/day/{day}",
                     f"[co-{str(year)[-2:]}-{day:0>2}]: "
-                    f"year_{year}/day_{day:0>2}",
+                    f"{combined_data.get_day(year, day).relative_path}",
                 ]
                 for day in range(1, 26)
             ), []))

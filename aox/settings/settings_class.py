@@ -5,8 +5,15 @@ from typing import Optional, Dict, Any
 import click
 
 from aox.settings import warnings
+from aox.settings.warnings import SettingsValidationError
 from aox.styling.shortcuts import e_error, e_suggest
 from aox.utils import load_module_from_path, get_current_directory
+
+
+class InvalidSettingsError(Exception):
+    def __init__(self, message, errors):
+        super().__init__(message)
+        self.errors = errors
 
 
 @warnings.register_warnings
@@ -31,6 +38,14 @@ class Settings:
     challenges_module_name_root: Optional[str] = field(
         default=None,
         metadata={"module_attribute": "CHALLENGES_MODULE_NAME_ROOT"},
+    )
+    challenges_boilerplate: 'aox.boilerplate.BaseBoilerplate' = field(
+        default="aox.boilerplate.DefaultBoilerplate",
+        metadata={
+            "module_attribute": "CHALLENGES_BOILERPLATE",
+            "warn": warnings.error_on(warnings.warn_missing_instance),
+            "validate_on_load": True,
+        },
     )
     site_data_path: Optional[Path] = field(
         default=None,
@@ -87,6 +102,30 @@ class Settings:
                 if 'module_attribute' in _field.metadata
             },
         )
+
+    def validate(self):
+        validation_errors = self.get_validation_errors()
+        if validation_errors:
+            click.echo(
+                f"Encountered {e_error('some errors')} while loading settings:"
+                f"\n" + "\n".join(
+                    f" * {error}"
+                    for error in validation_errors
+                ))
+            raise InvalidSettingsError(
+                "Settings were invalid", validation_errors)
+
+    def get_validation_errors(self):
+        validation_errors = []
+        for _field in fields(self):
+            if not _field.metadata.get('validate_on_load', False):
+                continue
+            try:
+                getattr(self, _field.name)
+            except SettingsValidationError as e:
+                validation_errors.append(e)
+
+        return validation_errors
 
     def __getattribute__(self, item):
         value = super().__getattribute__(item)

@@ -77,7 +77,7 @@ class RepoYearInfo:
             repo_info=repo_info,
             year=year,
             has_code=False,
-            path=repo_info.challenges_root.joinpath(f"year_{year}"),
+            path=settings.challenges_boilerplate.get_year_directory(year),
         )
         year_info.fill()
         return year_info
@@ -115,7 +115,8 @@ class RepoDayInfo:
             year_info=year_info,
             day=day,
             has_code=False,
-            path=year_info.path.joinpath(f"day_{day:0>2}"),
+            path=settings.challenges_boilerplate.get_day_directory(
+                year_info.year, day),
         )
         day_info.fill()
         return day_info
@@ -156,10 +157,9 @@ class RepoPartInfo:
 
     @classmethod
     def from_part(cls, part, day_info):
-        path = day_info.path.joinpath(f"part_{part}.py")
-        module_name = ".".join(filter(None, [
-            day_info.year_info.repo_info.challenges_module_name_root,
-            f"year_{day_info.year}.day_{day_info.day:0>2}.part_{part}",
-        ]))
+        path = settings.challenges_boilerplate.get_part_filename(
+            day_info.year, day_info.day, part)
+        module_name = settings.challenges_boilerplate.get_part_module_name(
+            day_info.year, day_info.day, part)
 
         return cls(day_info, part, path.exists(), path, module_name)

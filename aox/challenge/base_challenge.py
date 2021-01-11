@@ -4,10 +4,9 @@ A class that provides an interface, and some boilerplate, for every challenge.
 
 import doctest
 import importlib
-import re
 import sys
-from pathlib import Path
 
+from aox.settings import settings
 from aox.utils import get_current_directory
 
 
@@ -22,65 +21,16 @@ class BaseChallenge:
     part_a_for_testing = None
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
-    re_part = re.compile(r"part_([ab])")
-    re_day = re.compile(r"day_(\d\d)")
-    re_year = re.compile(r"year_(\d\d\d\d)")
-
     def __init__(self):
         self.module = sys.modules[self.__module__]
+        self.year, self.day, self.part = settings.challenges_boilerplate\
+            .extract_from_filename(self.module.__file__)
         self.input = self.get_input()
-        self.part = self.get_part()
-        self.day = self.get_day()
-        self.year = self.get_year()
-
-    def get_part(self):
-        """Parse the part from the filename"""
-        path = Path(self.module.__file__)
-        part_name = path.name
-        part_match = self.re_part.match(part_name)
-        if not part_match:
-            raise Exception(
-                f"Challenge name is not a recognised part 'part_x': "
-                f"{part_name}")
-
-        part, = part_match.groups()
-
-        return part
-
-    def get_day(self):
-        """Parse the day from the filename"""
-        path = Path(self.module.__file__)
-        day_name = path.parent.name
-        day_match = self.re_day.match(day_name)
-        if not day_match:
-            raise Exception(
-                f"Challenge path is not a recognised day 'day_xx': "
-                f"{day_name}")
-
-        day_text, = day_match.groups()
-        day = int(day_text)
-
-        return day
-
-    def get_year(self):
-        """Parse the year from the filename"""
-        path = Path(self.module.__file__)
-        year_name = path.parent.parent.name
-        year_match = self.re_year.match(year_name)
-        if not year_match:
-            raise Exception(
-                f"Challenge path is not a recognised year 'year_xxxx': "
-                f"{year_name}")
-
-        year_text, = year_match.groups()
-        year = int(year_text)
-
-        return year
 
     def get_input(self):
         """Get the input for the challenge"""
-        return get_current_directory(self.module.__file__)\
-            .joinpath("part_a_input.txt") \
+        return settings.challenges_boilerplate\
+            .get_day_input_filename(self.year, self.day)\
             .read_text()
 
     def main(self):

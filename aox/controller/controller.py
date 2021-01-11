@@ -38,6 +38,7 @@ class Controller:
         we're about to initialise settings, so we want to avoid any error
         messages.
         """
+        settings.validate()
         if not skip_combined_info:
             self.reload_combined_info()
 
@@ -174,13 +175,13 @@ class Controller:
         readme_path.write_text(updated_readme_text)
         click.echo(f"Updated {e_success('README')} with site data")
 
-    def refresh_challenge_input(self, year, day):
+    def refresh_challenge_input(self, year, day, only_if_empty=True):
         """Refresh a challenge's input from the AOC website"""
-        challenges_root = settings.challenges_root
-        if not challenges_root:
+        input_path = settings.challenges_boilerplate\
+            .get_day_input_filename(year, day)
+        if only_if_empty and input_path.exists() and input_path.lstat().st_size:
             return
-        input_path = challenges_root.joinpath(
-            f"year_{year}", f"day_{day:0>2}", "part_a_input.txt")
+
         _input = WebAoc().get_input_page(year, day)
         if not _input:
             click.echo(
@@ -200,42 +201,15 @@ class Controller:
             f"({e_value(f'{len(_input)} bytes')}) at "
             f"{e_value(str(input_path))}")
 
-    example_year_path = current_directory.joinpath('example_year')
-    example_day_path = example_year_path.joinpath('example_day')
-    example_part_path = example_day_path.joinpath('example_part.py')
-
     def add_challenge(self, year: int, day: int, part: str):
         """Add challenge code boilerplate, if it's not already there"""
-        challenges_root = settings.challenges_root
-        if not challenges_root:
+        if not settings.challenges_boilerplate.create_part(year, day, part):
             return
-        year_path = challenges_root.joinpath(f"year_{year}")
-        day_path = year_path.joinpath(f"day_{day:0>2}")
-        part_path = day_path.joinpath(f"part_{part}.py")
-
-        if part_path.exists():
-            click.echo(
-                f"Challenge {e_warn(f'{year} {day} {part.upper()}')} already "
-                f"exists at {e_value(str(part_path))}")
-            return
-
-        year_init_path = year_path.joinpath("__init__.py")
-        if not year_init_path.exists():
-            Path(year_init_path.parent).mkdir(exist_ok=True)
-            year_init_path.touch()
-        day_init_path = day_path.joinpath("__init__.py")
-        if not day_init_path.exists():
-            # noinspection PyTypeChecker
-            distutils.dir_util.copy_tree(self.example_day_path, str(day_path))
-            part_a_path = day_path.joinpath(f"part_{'a'}.py")
-            shutil.copy(self.example_part_path, part_a_path)
-            self.refresh_challenge_input(year=year, day=day)
-        if not part_path.exists():
-            shutil.copy(self.example_part_path, part_path)
-
+        self.refresh_challenge_input(year=year, day=day)
+        part_filename = self.combined_info.get_part(year, day, part).path
         click.echo(
             f"Added challenge {e_success(f'{year} {day} {part.upper()}')} at "
-            f"{e_value(str(part_path))}")
+            f"{e_value(str(part_filename))}")
 
         self.update_combined_info(repo_info=RepoInfo.from_roots())
 
