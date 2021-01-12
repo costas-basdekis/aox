@@ -5,15 +5,11 @@ The main entry point is `AccountInfo.from_site`
 """
 
 import json
-import re
 from dataclasses import dataclass, field
 from typing import Dict
 
-import click
-
 from aox.settings import settings
-from aox.styling.shortcuts import e_error
-from aox.web import WebAoc
+from aox.web import AccountScraper
 
 __all__ = [
     'AccountInfo',
@@ -38,66 +34,24 @@ class AccountInfo:
     @classmethod
     def from_site(cls):
         """Scrape the site for the stars for each challenge"""
-        events_page = WebAoc().get_events_page()
-        if not events_page:
+        collected_data = AccountScraper().collect_data()
+        return cls.from_collected_data(collected_data)
+
+    @classmethod
+    def from_collected_data(cls, collected_data):
+        if collected_data is None:
             return None
 
-        username = cls.get_username(events_page)
+        username = collected_data['username']
         if not username:
             return None
 
-        total_stars = cls.get_total_stars(events_page)
+        total_stars = collected_data['total_stars']
 
         account_info = cls(username, total_stars)
-        account_info.fill_years_from_site(events_page)
+        account_info.fill_years_from_collected_data(collected_data)
 
         return account_info
-
-    @classmethod
-    def get_username(cls, events_page):
-        """
-        Extract the username. If there isn't a username, there is no information
-        to gather.
-        """
-        user_nodes = events_page.select(".user")
-        if not user_nodes:
-            click.echo(
-                f"Either the session ID in {e_error('AOC_SESSION_ID')} is "
-                f"wrong, or it has expired: could not find the user name")
-            return None
-
-        user_node = user_nodes[0]
-        text_children = [
-            child
-            for child in user_node.children
-            if isinstance(child, str)
-        ]
-        if not text_children:
-            click.echo(
-                f"Either the user name is blank or the format has changed")
-            return None
-        return text_children[0].strip()
-
-    @classmethod
-    def get_total_stars(cls, events_page):
-        """Grab the total stars"""
-        total_stars_nodes = events_page.select("p > .star-count")
-        return cls.parse_star_count(total_stars_nodes)
-
-    re_stars = re.compile(r'^(\d+)\*$')
-
-    @classmethod
-    def parse_star_count(cls, stars_nodes, default=None):
-        """Star counts are represented in the same way everywhere"""
-        if not stars_nodes:
-            return default
-        stars_node = stars_nodes[0]
-        stars_match = cls.re_stars.match(stars_node.text.strip())
-        if not stars_match:
-            return default
-
-        stars_text, = stars_match.groups()
-        return int(stars_text)
 
     @classmethod
     def from_cache(cls):
@@ -158,38 +112,13 @@ class AccountInfo:
 
         return account_info
 
-    def fill_years_from_site(self, events_page):
-        """Parse the years information from the site"""
-        stars_nodes = events_page.select(".eventlist-event .star-count")
-        years_nodes = [node.parent for node in stars_nodes]
-        years_and_stars = [
-            (year, stars)
-            for year, stars
-            in filter(None, map(self.get_year_and_stars, years_nodes))
-            if stars
-        ]
-        for year, stars in years_and_stars:
-            year_info = AccountYearInfo(self, year, stars)
-            year_info.fill_days_from_site()
-            self.year_infos[year] = year_info
-
-    re_year = re.compile(r'^\[(\d+)]$')
-
-    def get_year_and_stars(self, year_node):
-        """Get the stars for a year from a year node in the events page"""
-        year_name_node = year_node.findChild('a')
-        if not year_name_node:
-            return None
-        year_name_match = self.re_year.match(year_name_node.text)
-        if not year_name_match:
-            return None
-        year_text, = year_name_match.groups()
-        year = int(year_text)
-
-        stars_nodes = year_node.select('.star-count')
-        stars = self.parse_star_count(stars_nodes, default=0)
-
-        return year, stars
+    def fill_years_from_collected_data(self, collected_data):
+        """Parse the years information from collected data"""
+        for year_data in collected_data['years'].values():
+            year_info = AccountYearInfo(
+                self, year_data['year'], year_data['stars'])
+            year_info.fill_days_from_collected_data(year_data)
+            self.year_infos[year_info.year] = year_info
 
     def fill_years_from_serialised(self, serialised_years, version):
         """Parse the years from JSON. The data are versioned"""
@@ -299,17 +228,11 @@ class AccountYearInfo:
 
         return year_info
 
-    def fill_days_from_site(self):
-        """Parse the days information from the site"""
-        year_page = WebAoc().get_year_page(self.year)
-        if year_page is None:
-            return
-
-        days_nodes = year_page.select('.calendar > a[class^="calendar-day"]')
-        for day_node in days_nodes:
-            day_info = AccountDayInfo.from_day_node(day_node, self)
-            if not day_info:
-                continue
+    def fill_days_from_collected_data(self, year_data):
+        """Parse the days information from collected data"""
+        for day, stars in year_data['days'].items():
+            day_info = AccountDayInfo(self, day, stars)
+            day_info.fill_parts()
             self.day_infos[day_info.day] = day_info
 
     def fill_days_from_serialised(self, serialised_days, version):
@@ -368,32 +291,6 @@ class AccountDayInfo:
     day: int
     stars: int
     part_infos: Dict[str, 'AccountPartInfo'] = field(default_factory=dict)
-
-    @classmethod
-    def from_day_node(cls, day_node, year_info):
-        """Parse the day info from a node in year page"""
-        day_name_nodes = day_node.select(".calendar-day")
-        if not day_name_nodes:
-            return None
-        day_name_node = day_name_nodes[0]
-        day_text = day_name_node.text
-        try:
-            day = int(day_text)
-        except ValueError:
-            return None
-
-        class_names = day_node.attrs['class']
-        if 'calendar-verycomplete' in class_names:
-            stars = 2
-        elif 'calendar-complete' in class_names:
-            stars = 1
-        else:
-            stars = 0
-
-        day_info = cls(year_info, day, stars)
-        day_info.fill_parts()
-
-        return day_info
 
     @classmethod
     def deserialise(cls, serialised, version, year_info):
