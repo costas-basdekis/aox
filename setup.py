@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name='aox',
-    version='0.1',
+    version='1.0',
     description='AdventOfCode Submissions Framework',
     author='Costas Basdekis',
     author_email='costas@basdekis.io',
