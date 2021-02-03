@@ -1,6 +1,10 @@
 #!/usr/bin/env python
-
+import os
 from distutils.core import setup
+from pathlib import Path
+
+current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+
 
 setup(
     name='aox',
@@ -9,6 +13,8 @@ setup(
     author='Costas Basdekis',
     author_email='costas@basdekis.io',
     url='https://github.com/costas-basdekis/aox',
+    long_description=current_directory.joinpath('README.md').read_text(),
+    long_description_content_type='text/markdown',
     packages=['aox'],
     scripts=[
         'scripts/aox',
