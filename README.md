@@ -56,16 +56,6 @@ aox add 2020 1 b
 
 And so on
 
-## Contributing:
+## AOX Structure & Contributing:
 
-### Testing
-
-Testing is mostly done via [doctests], which are collected via [pytest]. To run
-them you can use `make`:
-
-```shell script
-make test
-```
-
-[doctests]: https://docs.python.org/3/library/doctest.html
-[pytest]: https://docs.pytest.org/en/stable/
+Please see the relevant section in [aox](./aox)
