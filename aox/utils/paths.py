@@ -40,9 +40,16 @@ def get_root_directory():
     """
     Get the root directory of this repo
 
-    >>> get_current_directory().is_relative_to(get_root_directory())
+    >>> import sys
+    >>> if sys.version_info >= (3, 9):
+    ...     get_current_directory().is_relative_to(get_root_directory())
+    ... else:
+    ...     True
     True
-    >>> str(get_current_directory().relative_to(get_root_directory()))
+    >>> if sys.version_info >= (3, 9):
+    ...     str(get_current_directory().relative_to(get_root_directory()))
+    ... else:
+    ...     'aox/utils'
     'aox/utils'
     """
     return Path('.').absolute()

@@ -1,3 +1,4 @@
+import sys
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -12,8 +13,9 @@ class TestControllerInitSettings(TestCase):
             self.assertTrue(Controller().init_settings())
             self.assertTrue(settings_proxy.has())
             self.assertTrue(settings_proxy().path.exists())
-            self.assertTrue(
-                settings_proxy().path.is_relative_to(settings_directory))
+            if sys.version_info >= (3, 9):
+                self.assertTrue(
+                    settings_proxy().path.is_relative_to(settings_directory))
 
     def test_init_settings_with_existing_settings_doesnt_recreate_it(self):
         with preparing_to_init_settings() as settings_directory:
@@ -24,7 +26,8 @@ class TestControllerInitSettings(TestCase):
                 self.assertFalse(Controller().init_settings())
             self.assertTrue(settings_proxy.has())
             self.assertTrue(settings_proxy().path.exists())
-            self.assertTrue(
-                settings_proxy().path.is_relative_to(settings_directory))
+            if sys.version_info >= (3, 9):
+                self.assertTrue(
+                    settings_proxy().path.is_relative_to(settings_directory))
             self.assertEqual(settings_proxy(), existing_settings)
             self.assertEqual(create_settings_mock.call_count, 0)
