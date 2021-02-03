@@ -73,6 +73,8 @@ Various utilities exist in [aox.utils], colouring shortcuts in
 # Contributing
 ## Testing
 
+![Python package](https://github.com/costas-basdekis/aox/workflows/Python%20package/badge.svg)
+
 Testing is mostly done via [doctests], which are collected via [pytest]. We also
 use [flake8] to lint:
 
