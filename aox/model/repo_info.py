@@ -7,9 +7,10 @@ The main entry point is `RepoInfo.from_roots`
 import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Dict
+from typing import Dict
 
 from aox.settings import settings_proxy
+from aox.utils import Literal
 
 __all__ = ['RepoInfo', 'RepoYearInfo', 'RepoDayInfo', 'RepoPartInfo']
 
