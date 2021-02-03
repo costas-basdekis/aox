@@ -30,13 +30,13 @@ class TestDefaultBoilerplate(TestCase):
         with amending_settings(challenges_root=Path('/tmp/test-directory')):
             self.assertEqual(
                 DefaultBoilerplate().get_day_input_filename(2020, 5),
-                Path('/tmp/test-directory/year_2020/day_05/part_a_input.txt'))
+                Path('/tmp/test-directory/year_2020/day_05/input.txt'))
 
     def test_get_day_input_filename_absolute_path_double_digit_day(self):
         with amending_settings(challenges_root=Path('/tmp/test-directory')):
             self.assertEqual(
                 DefaultBoilerplate().get_day_input_filename(2020, 15),
-                Path('/tmp/test-directory/year_2020/day_15/part_a_input.txt'))
+                Path('/tmp/test-directory/year_2020/day_15/input.txt'))
 
     def test_get_day_directory_absolute_path_single_digit_day(self):
         with amending_settings(challenges_root=Path('/tmp/test-directory')):
@@ -96,7 +96,7 @@ class TestDefaultBoilerplate(TestCase):
                 f"{challenges_root}/year_2020/day_05",
                 f"{challenges_root}/year_2020/day_05/__init__.py",
                 f"{challenges_root}/year_2020/day_05/part_a.py",
-                f"{challenges_root}/year_2020/day_05/part_a_input.txt",
+                f"{challenges_root}/year_2020/day_05/input.txt",
             })
         files_in_repo_after_create = glob.glob(
             str(current_directory.joinpath('**/*')), recursive=True)
@@ -119,7 +119,7 @@ class TestDefaultBoilerplate(TestCase):
                 f"{challenges_root}/year_2020/day_15",
                 f"{challenges_root}/year_2020/day_15/__init__.py",
                 f"{challenges_root}/year_2020/day_15/part_a.py",
-                f"{challenges_root}/year_2020/day_15/part_a_input.txt",
+                f"{challenges_root}/year_2020/day_15/input.txt",
             })
         files_in_repo_after_create = glob.glob(
             str(current_directory.joinpath('**/*')), recursive=True)
@@ -143,7 +143,7 @@ class TestDefaultBoilerplate(TestCase):
                 f"{challenges_root}/year_2020/day_05/__init__.py",
                 f"{challenges_root}/year_2020/day_05/part_a.py",
                 f"{challenges_root}/year_2020/day_05/part_b.py",
-                f"{challenges_root}/year_2020/day_05/part_a_input.txt",
+                f"{challenges_root}/year_2020/day_05/input.txt",
             })
         files_in_repo_after_create = glob.glob(
             str(current_directory.joinpath('**/*')), recursive=True)
@@ -167,7 +167,7 @@ class TestDefaultBoilerplate(TestCase):
                 f"{challenges_root}/year_2020/day_15/__init__.py",
                 f"{challenges_root}/year_2020/day_15/part_a.py",
                 f"{challenges_root}/year_2020/day_15/part_b.py",
-                f"{challenges_root}/year_2020/day_15/part_a_input.txt",
+                f"{challenges_root}/year_2020/day_15/input.txt",
             })
         files_in_repo_after_create = glob.glob(
             str(current_directory.joinpath('**/*')), recursive=True)

@@ -80,14 +80,14 @@ class DefaultBoilerplate(BaseBoilerplate):
                                relative: bool = False):
         """
         >>> str(DefaultBoilerplate().get_day_input_filename(2020, 5, True))
-        'year_2020/day_05/part_a_input.txt'
+        'year_2020/day_05/input.txt'
         >>> str(DefaultBoilerplate().get_day_input_filename(2020, 15, True))
-        'year_2020/day_15/part_a_input.txt'
+        'year_2020/day_15/input.txt'
         """
         day_directory = self.get_day_directory(year, day, relative=relative)
         if day_directory is None:
             return None
-        return day_directory.joinpath("part_a_input.txt")
+        return day_directory.joinpath("input.txt")
 
     def get_day_directory(self, year: int, day: int, relative: bool = False):
         """
@@ -152,7 +152,7 @@ class DefaultBoilerplate(BaseBoilerplate):
             day_init_path.touch()
             part_a_path = self.get_part_filename(year, day, 'a')
             shutil.copy(self.example_part_path, part_a_path)
-        day_input_path = day_path.joinpath("part_a_input.txt")
+        day_input_path = day_path.joinpath("input.txt")
         if not day_input_path.exists():
             day_input_path.parent.mkdir(exist_ok=True)
             day_input_path.touch()
