@@ -1,1 +1,1 @@
-from .default_boilerplate import *
+from .default_boilerplate import *  # noqa: F401, F403

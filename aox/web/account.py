@@ -1,7 +1,6 @@
 import re
 from dataclasses import dataclass, field
 
-import bs4
 import click
 
 from aox.styling.shortcuts import e_error
@@ -44,6 +43,7 @@ class AccountScraper:
         Extract the username. If there isn't a username, there is no information
         to gather.
 
+        >>> import bs4
         >>> AccountScraper(WebAoc('test-session')).get_username(
         ...     bs4.BeautifulSoup(
         ...         "<html><body>"
@@ -80,6 +80,7 @@ class AccountScraper:
         """
         Grab the total stars
 
+        >>> import bs4
         >>> AccountScraper(WebAoc('test-session')).get_total_stars(
         ...     bs4.BeautifulSoup(
         ...         "<html><body>"
@@ -102,6 +103,7 @@ class AccountScraper:
         """
         Star counts are represented in the same way everywhere
 
+        >>> import bs4
         >>> AccountScraper(WebAoc('test-session')).parse_star_count(
         ...     [bs4.BeautifulSoup(
         ...         "<span class='star-count'>39*</span></div>",
@@ -148,6 +150,7 @@ class AccountScraper:
 
     def get_years_stars(self, events_page):
         """
+        >>> import bs4
         >>> AccountScraper(WebAoc('test-session')).get_years_stars(
         ...     bs4.BeautifulSoup(
         ...         "<html><body>"
@@ -182,6 +185,7 @@ class AccountScraper:
         """
         Get the stars for a year from a year node in the events page
 
+        >>> import bs4
         >>> AccountScraper(WebAoc('test-session')).get_year_stars(
         ...     bs4.BeautifulSoup(
         ...         "<div class='eventlist-event'><a href='/'>[2020]</a>"
@@ -218,6 +222,7 @@ class AccountScraper:
 
     def collect_year_from_page(self, year_page, year, stars):
         """
+        >>> import bs4
         >>> AccountScraper(WebAoc('test-session')).collect_year_from_page(
         ...     bs4.BeautifulSoup(
         ...         "<html><body><article>"
@@ -249,6 +254,7 @@ class AccountScraper:
 
     def collect_day(self, day_node):
         """
+        >>> import bs4
         >>> AccountScraper(WebAoc('test-session')).collect_day(
         ...     bs4.BeautifulSoup(
         ...         "<a aria-label='Day 15, two stars' href='/2020/day/15' "

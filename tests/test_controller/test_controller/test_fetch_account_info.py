@@ -1,3 +1,4 @@
+# flake8: noqa E501
 import json
 from contextlib import contextmanager
 from unittest import TestCase

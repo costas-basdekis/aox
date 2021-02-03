@@ -12,7 +12,7 @@ from typing import Dict, Optional
 
 import click
 
-from aox import BaseChallenge
+from aox.challenge import BaseChallenge
 from aox.model.repo_info import RepoInfo
 from aox.model.account_info import AccountInfo
 from aox.settings import settings_proxy

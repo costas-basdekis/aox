@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 
 
 __all__ = ['StringEnum']
@@ -8,6 +8,7 @@ class StringEnum(Enum):
     """
     An enum class that auto-assigns values to be the same as names
 
+    >>> from enum import auto
     >>> class TestEnum(StringEnum):
     ...     Foo = auto()
     ...     ClassName = auto()

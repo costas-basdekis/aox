@@ -73,11 +73,14 @@ Various utilities exist in [aox.utils], colouring shortcuts in
 # Contributing
 ## Testing
 
-Testing is mostly done via [doctests], which are collected via [pytest]. To run
-them you can use `pytest` directly:
+Testing is mostly done via [doctests], which are collected via [pytest]. We also
+use [flake8] to lint:
 
 ```shell script
+pip install -r test_requirements.txt
+pip install -r requirements.txt
 pytest
+flake8
 ```
 
 If you can use doctests inline in modules, and for more advance cases write unit
@@ -85,4 +88,5 @@ tests in [tests]
 
 [doctests]: https://docs.python.org/3/library/doctest.html
 [pytest]: https://docs.py``test.org/en/stable/
+[flake8]: https://flake8.pycqa.org/en/3.1.1/index.html
 [tests]: ../tests

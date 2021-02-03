@@ -52,7 +52,7 @@ class Settings:
         metadata={"module_attribute": "CHALLENGES_MODULE_NAME_ROOT"},
     )
     # noinspection PyUnresolvedReferences
-    challenges_boilerplate: 'aox.boilerplate.BaseBoilerplate' = field(
+    challenges_boilerplate: 'aox.boilerplate.BaseBoilerplate' = field(  # noqa: F821, E501
         default="aox.boilerplate.DefaultBoilerplate",
         metadata={
             "module_attribute": "CHALLENGES_BOILERPLATE",

@@ -8,10 +8,8 @@ import json
 from dataclasses import dataclass
 from doctest import TestResults
 from enum import auto
-from pathlib import Path
 from typing import Optional
 
-import bs4
 import click
 
 from aox.settings import Settings, settings_proxy
@@ -406,6 +404,8 @@ class Controller:
 
     def get_submission_result(self, is_final_part, message):
         """
+        >>> import bs4
+        >>> from pathlib import Path
         >>> def get_submission_result_from_html(_is_final_part, html_name):
         ...     return Controller().get_submission_result(
         ...        _is_final_part, bs4.BeautifulSoup(Path('').joinpath(

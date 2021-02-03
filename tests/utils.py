@@ -77,7 +77,7 @@ def creating_parts_on_disk(parts):
             "challenges_module_name_root": challenges_module_name_root,
         }
         with amending_settings(**extra_settings), \
-             resetting_modules(challenges_module_name_root):
+                resetting_modules(challenges_module_name_root):
             for part in parts:
                 settings_proxy().challenges_boilerplate.create_part(*part)
             yield challenges_root

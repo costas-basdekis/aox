@@ -1,4 +1,3 @@
-import sys
 from unittest import TestCase, mock
 
 from tests.utils import making_combined_info

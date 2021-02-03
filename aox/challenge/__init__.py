@@ -1,1 +1,1 @@
-from .base_challenge import BaseChallenge
+from .base_challenge import *  # noqa: F401, F403

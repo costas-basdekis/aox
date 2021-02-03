@@ -1,3 +1,4 @@
+# flake8: noqa E501
 from unittest import TestCase
 
 from aox.model import CombinedInfo, RepoInfo, AccountInfo

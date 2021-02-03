@@ -9,6 +9,9 @@ import sys
 from aox.settings import settings_proxy
 
 
+__all__ = ['PlayNotImplementedError', 'BaseChallenge']
+
+
 class PlayNotImplementedError(NotImplementedError):
     pass
 
@@ -26,7 +29,8 @@ class BaseChallenge:
 
     def __init__(self):
         self.module = self.get_module()
-        self.year, self.day, self.part = settings_proxy().challenges_boilerplate\
+        self.year, self.day, self.part = settings_proxy()\
+            .challenges_boilerplate\
             .extract_from_filename(self.module.__file__)
         self.input = self.get_input()
 

@@ -79,7 +79,8 @@ class RepoYearInfo:
             repo_info=repo_info,
             year=year,
             has_code=False,
-            path=settings_proxy().challenges_boilerplate.get_year_directory(year),
+            path=settings_proxy().challenges_boilerplate
+            .get_year_directory(year),
         )
         year_info.fill(existing_files)
         return year_info

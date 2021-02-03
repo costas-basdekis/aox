@@ -4,7 +4,6 @@ from typing import Optional
 import bs4
 import click
 import requests
-from requests import Response
 
 from aox.settings import settings_proxy
 from aox.styling.shortcuts import e_error
@@ -192,6 +191,7 @@ class WebAoc:
         """
         Parse a response as a particular type (eg HTML)
 
+        >>> from requests import Response
         >>> _response = Response()
         >>> _response._content = b'<html><body><article>Hi'
         >>> _response.status_code = 200
@@ -217,6 +217,7 @@ class WebAoc:
         """
         Parse a response as HTML
 
+        >>> from requests import Response
         >>> _response = Response()
         >>> _response._content = b'<html><body><article>Hi'
         >>> _response.status_code = 200
@@ -246,6 +247,7 @@ class WebAoc:
         """
         Parse a response as text
 
+        >>> from requests import Response
         >>> _response = Response()
         >>> _response._content = b'Hello there'
         >>> _response.status_code = 200
