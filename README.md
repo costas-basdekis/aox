@@ -1,6 +1,7 @@
 # aox - Advent of Code Submissions helper
 
-![Python package](https://github.com/costas-basdekis/aox/workflows/Python%20package/badge.svg)
+![Tests](https://github.com/costas-basdekis/aox/workflows/Tests/badge.svg)
+[![PyPI version](https://badge.fury.io/py/aox.svg)](https://badge.fury.io/py/aox)
 
 This is a framework to make it easier to develop solutions for [AOC], with some
 useful features for writing and submitting.
