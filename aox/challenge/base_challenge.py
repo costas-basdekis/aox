@@ -6,7 +6,7 @@ import doctest
 import importlib
 import sys
 
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 
 
 class PlayNotImplementedError(NotImplementedError):
@@ -26,7 +26,7 @@ class BaseChallenge:
 
     def __init__(self):
         self.module = self.get_module()
-        self.year, self.day, self.part = get_settings().challenges_boilerplate\
+        self.year, self.day, self.part = settings_proxy().challenges_boilerplate\
             .extract_from_filename(self.module.__file__)
         self.input = self.get_input()
 
@@ -41,7 +41,7 @@ class BaseChallenge:
 
     def get_input(self):
         """Get the input for the challenge"""
-        return get_settings().challenges_boilerplate\
+        return settings_proxy().challenges_boilerplate\
             .get_day_input_filename(self.year, self.day)\
             .read_text()
 

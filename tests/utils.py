@@ -10,16 +10,16 @@ import click
 from aox.boilerplate import DefaultBoilerplate
 from aox.controller.controller import Controller
 from aox.model import CombinedInfo, RepoInfo, AccountInfo
-from aox.settings import get_settings, set_settings, Settings
+from aox.settings import Settings, settings_proxy
 from aox.utils.paths import get_root_directory
 
 
 @contextmanager
 def replacing_settings(new_settings):
-    old_settings = get_settings(raise_if_missing=False)
-    set_settings(new_settings)
-    yield get_settings(raise_if_missing=False)
-    set_settings(old_settings)
+    old_settings = settings_proxy(False)
+    settings_proxy.set(new_settings)
+    yield settings_proxy(False)
+    settings_proxy.set(old_settings)
 
 
 @contextmanager
@@ -35,12 +35,12 @@ def preparing_to_init_settings():
 def amending_settings(**kwargs):
     settings_dict = {
         key: value
-        for key, value in get_settings().__dict__.items()
+        for key, value in settings_proxy().__dict__.items()
         if key in kwargs
     }
-    get_settings().__dict__.update(**kwargs)
-    yield get_settings()
-    get_settings().__dict__.update(settings_dict)
+    settings_proxy().__dict__.update(**kwargs)
+    yield settings_proxy()
+    settings_proxy().__dict__.update(settings_dict)
 
 
 @contextmanager
@@ -79,7 +79,7 @@ def creating_parts_on_disk(parts):
         with amending_settings(**extra_settings), \
              resetting_modules(challenges_module_name_root):
             for part in parts:
-                get_settings().challenges_boilerplate.create_part(*part)
+                settings_proxy().challenges_boilerplate.create_part(*part)
             yield challenges_root
 
 

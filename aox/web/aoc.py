@@ -6,7 +6,7 @@ import click
 import requests
 from requests import Response
 
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 from aox.styling.shortcuts import e_error
 
 
@@ -21,7 +21,7 @@ class WebAoc:
     The session ID is necessary before any request.
     """
     session_id: Optional[str] = field(
-        default_factory=lambda: get_settings().aoc_session_id)
+        default_factory=lambda: settings_proxy().aoc_session_id)
 
     root_url = 'https://adventofcode.com'
     headers = {

@@ -15,7 +15,7 @@ import click
 from aox import BaseChallenge
 from aox.model.repo_info import RepoInfo
 from aox.model.account_info import AccountInfo
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 from aox.styling.shortcuts import e_error
 
 
@@ -189,7 +189,7 @@ class CombinedYearInfo(object):
 
     @property
     def relative_path(self):
-        return self.path.relative_to(get_settings().challenges_root)
+        return self.path.relative_to(settings_proxy().challenges_root)
 
     def amend_days_from_account_year_info(self, account_year_info):
         """
@@ -359,7 +359,7 @@ class CombinedDayInfo:
 
     @property
     def relative_path(self):
-        return self.path.relative_to(get_settings().challenges_root)
+        return self.path.relative_to(settings_proxy().challenges_root)
 
     @property
     def has_code(self):
@@ -370,7 +370,7 @@ class CombinedDayInfo:
         return self.year_info.has_site_data
 
     def get_input_filename(self):
-        return get_settings().challenges_boilerplate\
+        return settings_proxy().challenges_boilerplate\
             .get_day_input_filename(self.year, self.day)
 
     def get_part(self, part) -> Optional['CombinedPartInfo']:
@@ -442,7 +442,7 @@ class CombinedPartInfo:
 
     @property
     def relative_path(self):
-        return self.path.relative_to(get_settings().challenges_root)
+        return self.path.relative_to(settings_proxy().challenges_root)
 
     @property
     def has_site_data(self):

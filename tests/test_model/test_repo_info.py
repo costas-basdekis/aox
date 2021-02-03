@@ -6,7 +6,7 @@ from unittest import TestCase
 
 from aox.boilerplate import DefaultBoilerplate
 from aox.model import RepoInfo
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 from tests.utils import amending_settings
 
 
@@ -52,14 +52,14 @@ class TestRepoInfoFromDisk(TestCase):
             with amending_settings(
                     challenges_root=Path(challenges_root),
                     challenges_boilerplate=DefaultBoilerplate()):
-                get_settings().challenges_boilerplate.create_part(2020, 1, 'b')
-                get_settings().challenges_boilerplate.create_part(2020, 2, 'b')
-                get_settings().challenges_boilerplate.create_part(2020, 3, 'b')
-                get_settings().challenges_boilerplate.create_part(2020, 10, 'b')
-                get_settings().challenges_boilerplate.create_part(2020, 11, 'a')
-                get_settings().challenges_boilerplate.create_part(2019, 1, 'b')
-                get_settings().challenges_boilerplate.create_part(2019, 3, 'a')
-                get_settings().challenges_boilerplate.create_part(2019, 11, 'b')
+                settings_proxy().challenges_boilerplate.create_part(2020, 1, 'b')
+                settings_proxy().challenges_boilerplate.create_part(2020, 2, 'b')
+                settings_proxy().challenges_boilerplate.create_part(2020, 3, 'b')
+                settings_proxy().challenges_boilerplate.create_part(2020, 10, 'b')
+                settings_proxy().challenges_boilerplate.create_part(2020, 11, 'a')
+                settings_proxy().challenges_boilerplate.create_part(2019, 1, 'b')
+                settings_proxy().challenges_boilerplate.create_part(2019, 3, 'a')
+                settings_proxy().challenges_boilerplate.create_part(2019, 11, 'b')
 
                 folder_contents = glob.glob(
                     f"{challenges_root}/**/*", recursive=True)

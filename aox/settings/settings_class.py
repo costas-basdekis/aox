@@ -13,24 +13,7 @@ from aox.utils import load_module_from_path, get_current_directory
 __all__ = [
     'InvalidSettingsError',
     'Settings',
-    'get_settings',
-    'ensure_default_settings',
-    'set_default_settings',
-    'set_settings',
-    'has_settings',
 ]
-
-
-class UninitialisedSettingsError(Exception):
-    """
-    Error signifying that the settings were trying to be accessed before they
-    were initialised.
-    """
-
-    DEFAULT_MESSAGE = "The settings have not been initialised yet"
-
-    def __init__(self, message=DEFAULT_MESSAGE, *args):
-        super().__init__(message, *args)
 
 
 class InvalidSettingsError(Exception):
@@ -175,39 +158,3 @@ class Settings:
             value = warn(self, item, module_attribute, value)
             setattr(self, item, value)
         return value
-
-
-settings: Optional[Settings] = None
-"""The current (initialised or not) settings instance"""
-
-
-def get_settings(raise_if_missing=True) -> Settings:
-    """Get the current (initialised or not) settings"""
-    if raise_if_missing and settings is None:
-        raise UninitialisedSettingsError()
-    return settings
-
-
-def ensure_default_settings():
-    """Set the default settings, if not initialised yet"""
-    if has_settings():
-        return
-    set_default_settings()
-
-
-def set_default_settings():
-    """Update the settings instance to the one gotten by default"""
-    return set_settings(Settings.from_default())
-
-
-def set_settings(new_settings):
-    """Update the settings instance to custom one"""
-    global settings
-    settings = new_settings
-
-    return settings
-
-
-def has_settings():
-    """Check whether settings have been initialised"""
-    return settings is not None

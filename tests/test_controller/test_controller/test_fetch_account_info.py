@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from aox.controller.controller import Controller
 from aox.model import AccountInfo
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 from tests.utils import preparing_to_init_settings
 
 
@@ -31,7 +31,7 @@ class TestControllerFetchAccountInfo(TestCase):
             combined_info = controller.combined_info
             self.assertFalse(controller.fetch_account_info())
             self.assertEqual(
-                get_settings().site_data_path.read_text(), "null\n")
+                settings_proxy().site_data_path.read_text(), "null\n")
         self.assertEqual(controller.combined_info, combined_info)
 
     def test_fetching_account_info_changes_cached_data(self):
@@ -46,7 +46,7 @@ class TestControllerFetchAccountInfo(TestCase):
         })
         with self.fetching_info(account_info, True) as controller:
             self.assertEqual(
-                json.loads(get_settings().site_data_path.read_text()),
+                json.loads(settings_proxy().site_data_path.read_text()),
                 account_info.serialise())
         self.assertTrue(
             controller.combined_info.get_part(2020, 2, 'a').has_star)
@@ -64,7 +64,7 @@ class TestControllerFetchAccountInfo(TestCase):
             },
         })
         with self.preparing_to_fetch_info(account_info) as controller:
-            site_data_path = get_settings().site_data_path
+            site_data_path = settings_proxy().site_data_path
             site_data_path.unlink()
             self.assertTrue(controller.fetch_account_info())
             self.assertTrue(site_data_path.exists())

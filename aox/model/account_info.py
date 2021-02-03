@@ -8,7 +8,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Dict
 
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 from aox.web import AccountScraper
 
 __all__ = [
@@ -81,7 +81,7 @@ class AccountInfo:
 
     @classmethod
     def from_cache(cls):
-        site_data_path = get_settings().site_data_path
+        site_data_path = settings_proxy().site_data_path
         if not site_data_path or not site_data_path.exists():
             return None
 

@@ -14,7 +14,7 @@ from typing import Optional
 import bs4
 import click
 
-from aox.settings import get_settings, Settings, has_settings, set_settings
+from aox.settings import Settings, settings_proxy
 from aox.model import RepoInfo, AccountInfo, CombinedInfo, CombinedPartInfo
 from aox.web import WebAoc
 from aox.styling.shortcuts import e_warn, e_value, e_success, e_star, e_error, \
@@ -35,10 +35,10 @@ class Controller:
 
     def init_settings(self, settings_directory=None):
         """Create a new settings directory for the user, if they're missing"""
-        if has_settings() and get_settings().path.exists():
+        if settings_proxy.has() and settings_proxy().path.exists():
             click.echo(
                 f"User settings {e_warn('already exist')} at "
-                f"{e_value(str(get_settings().path))}. Will not overwrite "
+                f"{e_value(str(settings_proxy().path))}. Will not overwrite "
                 f"them.")
             self.reload_combined_info()
             return False
@@ -55,12 +55,13 @@ class Controller:
         distutils.dir_util.copy_tree(
             Settings.EXAMPLE_SETTINGS_DIRECTORY,
             str(settings_directory))
-        set_settings(Settings.from_settings_directory(settings_directory))
+        settings = Settings.from_settings_directory(settings_directory)
+        settings_proxy.set(settings)
         click.echo(
             f"Initialised {e_success('user settings')} at "
-            f"{e_value(str(get_settings().settings_directory))}! You should "
-            f"now edit {e_value(str(get_settings().path))} and "
-            f"{e_value(str(get_settings().sensitive_users_path))}")
+            f"{e_value(str(settings_proxy().settings_directory))}! You should "
+            f"now edit {e_value(str(settings_proxy().path))} and "
+            f"{e_value(str(settings_proxy().sensitive_users_path))}")
 
     def list_years(self):
         """List all the years that have code or stars"""
@@ -131,8 +132,8 @@ class Controller:
             click.echo(f"Could {e_error('not fetch data')}")
             return False
 
-        if get_settings().site_data_path:
-            with get_settings().site_data_path.open('w') as f:
+        if settings_proxy().site_data_path:
+            with settings_proxy().site_data_path.open('w') as f:
                 json.dump(account_info.serialise(), f, indent=2)
 
         self.update_combined_info(account_info=account_info)
@@ -148,7 +149,7 @@ class Controller:
         Update README with summaries, presumably because code or stars were
         added.
         """
-        readme_path = get_settings().readme_path
+        readme_path = settings_proxy().readme_path
         if not readme_path:
             return False
         if not self.combined_info.has_site_data:
@@ -173,7 +174,7 @@ class Controller:
 
     def refresh_challenge_input(self, year, day, only_if_empty=True):
         """Refresh a challenge's input from the AOC website"""
-        input_path = get_settings().challenges_boilerplate\
+        input_path = settings_proxy().challenges_boilerplate\
             .get_day_input_filename(year, day)
         if only_if_empty and input_path.exists() and input_path.lstat().st_size:
             return False
@@ -201,7 +202,7 @@ class Controller:
 
     def add_challenge(self, year: int, day: int, part: str):
         """Add challenge code boilerplate, if it's not already there"""
-        if not get_settings().challenges_boilerplate\
+        if not settings_proxy().challenges_boilerplate\
                 .create_part(year, day, part):
             return False
         self.refresh_challenge_input(year=year, day=day)

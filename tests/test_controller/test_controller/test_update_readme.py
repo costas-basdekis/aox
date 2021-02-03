@@ -3,7 +3,7 @@ from contextlib import nullcontext
 from pathlib import Path
 from unittest import TestCase
 
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 from aox.summary import BaseSummary, summary_registry
 from tests.utils import using_controller, amending_settings
 
@@ -50,7 +50,7 @@ class TestControllerUpdateReadme(TestCase):
                 readme_file.write(initial_content)
                 readme_file.flush()
             self.assertEqual(controller.update_readme(), expected_result)
-            readme_path = get_settings().readme_path
+            readme_path = settings_proxy().readme_path
             if readme_path and readme_path.exists():
                 content = readme_path.read_text()
             else:

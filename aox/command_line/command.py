@@ -9,7 +9,7 @@ from typing import Optional
 import click
 
 from ..controller.controller import Controller
-from ..settings.settings_class import get_settings, ensure_default_settings
+from aox.settings import settings_proxy
 
 __all__ = ['cli', 'create_cli']
 
@@ -31,7 +31,7 @@ def create_cli():
         # If we're about to run `init-settings`, don't load the combined info,
         # to avoid any "missing settings" messages.
         if ctx.invoked_subcommand != 'init-settings':
-            ensure_default_settings()
+            settings_proxy.ensure_default()
             controller.reload_combined_info()
         if ctx.invoked_subcommand:
             return
@@ -76,7 +76,7 @@ def create_cli():
     @click.pass_context
     def challenge(ctx, year, day, part, path, force, filters_texts, debug):
         if path is not None:
-            year, day, part = get_settings().challenges_boilerplate\
+            year, day, part = settings_proxy().challenges_boilerplate\
                 .extract_from_filename(path)
             ctx.params['year'], ctx.params['day'], ctx.params['part'] = \
                 year, day, part

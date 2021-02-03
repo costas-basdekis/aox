@@ -9,7 +9,7 @@ from pathlib import Path
 import click
 
 from aox.boilerplate.base_boilerplate import BaseBoilerplate
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 
 from aox.styling.shortcuts import e_warn, e_value, e_error
 from aox.utils import get_current_directory
@@ -109,7 +109,7 @@ class DefaultBoilerplate(BaseBoilerplate):
         if relative:
             base = Path()
         else:
-            base = get_settings().challenges_root
+            base = settings_proxy().challenges_root
         if base is None:
             return None
         return base.joinpath(f"year_{year}")
@@ -122,7 +122,7 @@ class DefaultBoilerplate(BaseBoilerplate):
         'year_2020.day_15.part_a'
         """
         return ".".join(filter(None, [
-            get_settings().challenges_module_name_root,
+            settings_proxy().challenges_module_name_root,
             f"year_{year}.day_{day:0>2}.part_{part}",
         ]))
 

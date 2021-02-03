@@ -1,3 +1,3 @@
-from aox.settings import ensure_default_settings
+from aox.settings import settings_proxy
 
-ensure_default_settings()
+settings_proxy.ensure_default()

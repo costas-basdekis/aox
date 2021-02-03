@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Set
 from unittest import TestCase
 
 from aox.model import RepoInfo, CombinedInfo, AccountInfo, CombinedPartInfo
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 from tests.utils import making_combined_info, make_combined_info
 
 
@@ -31,7 +31,7 @@ class BaseAccountInfoTestCase(TestCase):
 
     def get_combined_info(self):
         for part in self.parts_to_create_on_disk:
-            get_settings().challenges_boilerplate.create_part(*part)
+            settings_proxy().challenges_boilerplate.create_part(*part)
         return CombinedInfo\
             .from_repo_and_account_infos(
                 RepoInfo.from_roots(),
@@ -43,7 +43,7 @@ class BaseAccountInfoTestCase(TestCase):
                 self.parts_to_create_on_disk, self.collected_data) \
                 as combined_info:
             folder_contents = glob.glob(
-                f"{get_settings().challenges_root}/**/*", recursive=True)
+                f"{settings_proxy().challenges_root}/**/*", recursive=True)
 
             self.assertEqual(combined_info.has_code, self.has_code)
             self.assertTrue(set(combined_info.year_infos).issuperset(

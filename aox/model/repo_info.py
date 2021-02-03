@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Dict
 
-from aox.settings import get_settings
+from aox.settings import settings_proxy
 
 __all__ = ['RepoInfo', 'RepoYearInfo', 'RepoDayInfo', 'RepoPartInfo']
 
@@ -79,7 +79,7 @@ class RepoYearInfo:
             repo_info=repo_info,
             year=year,
             has_code=False,
-            path=get_settings().challenges_boilerplate.get_year_directory(year),
+            path=settings_proxy().challenges_boilerplate.get_year_directory(year),
         )
         year_info.fill(existing_files)
         return year_info
@@ -118,7 +118,7 @@ class RepoDayInfo:
             year_info=year_info,
             day=day,
             has_code=False,
-            path=get_settings().challenges_boilerplate.get_day_directory(
+            path=settings_proxy().challenges_boilerplate.get_day_directory(
                 year_info.year, day),
         )
         day_info.fill(existing_files)
@@ -161,9 +161,9 @@ class RepoPartInfo:
 
     @classmethod
     def from_part(cls, part, day_info, existing_files=None):
-        path = get_settings().challenges_boilerplate\
+        path = settings_proxy().challenges_boilerplate\
             .get_part_filename(day_info.year, day_info.day, part)
-        module_name = get_settings().challenges_boilerplate\
+        module_name = settings_proxy().challenges_boilerplate\
             .get_part_module_name(day_info.year, day_info.day, part)
         if existing_files is None:
             has_code = path.exists()
