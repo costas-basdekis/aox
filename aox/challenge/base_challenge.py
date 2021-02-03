@@ -6,8 +6,11 @@ import doctest
 import importlib
 import sys
 
-from aox.settings import settings
-from aox.utils import get_current_directory
+from aox.settings import get_settings
+
+
+class PlayNotImplementedError(NotImplementedError):
+    pass
 
 
 class BaseChallenge:
@@ -22,36 +25,49 @@ class BaseChallenge:
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
     def __init__(self):
-        self.module = sys.modules[self.__module__]
-        self.year, self.day, self.part = settings.challenges_boilerplate\
+        self.module = self.get_module()
+        self.year, self.day, self.part = get_settings().challenges_boilerplate\
             .extract_from_filename(self.module.__file__)
         self.input = self.get_input()
 
+    @classmethod
+    def get_module(cls):
+        return sys.modules[cls.__module__]
+
+    @classmethod
+    def is_main_module(cls):
+        main_module = sys.modules.get('__main__')
+        return cls.get_module() == main_module
+
     def get_input(self):
         """Get the input for the challenge"""
-        return settings.challenges_boilerplate\
+        return get_settings().challenges_boilerplate\
             .get_day_input_filename(self.year, self.day)\
             .read_text()
 
-    def main(self):
+    @classmethod
+    def main(cls, extra_args=None):
         """
         A way to run the functionality from the command line, but limited to
         only this specific challenge.
         """
-        main_module = sys.modules.get('__main__')
-        if self.module != main_module:
+        if not cls.is_main_module():
             return
         from aox.command_line.command import cli
-        cli(args=(self.get_main_args()))
+        return cli(args=(cls.get_main_args(extra_args=extra_args)))
 
-    def get_main_args(self):
+    @classmethod
+    def get_main_args(cls, extra_args=None):
         """The CLI arguments to simulate an invocation of this challenge"""
+        if extra_args is None:
+            extra_args = sys.argv[1:]
         return [
             'challenge',
-            str(self.year),
-            str(self.day),
-            self.part,
-        ] + sys.argv[1:]
+            '--path', cls.get_module().__file__,
+            '0',
+            '0',
+            'a',
+        ] + extra_args
 
     def default_solve(self, _input=None, debug=False):
         """Convenient method to call `solve` with the input from the disk"""
@@ -73,7 +89,7 @@ class BaseChallenge:
         Some challenges can benefit from providing an interactive or visual
         mode.
         """
-        raise Exception(f"Challenge has not implemented play")
+        raise PlayNotImplementedError(f"Challenge has not implemented play")
 
     def get_test_modules(self):
         """

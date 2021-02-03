@@ -10,6 +10,8 @@ __all__ = [
     'load_module_from_path',
 ]
 
+from typing import Union
+
 
 def get_caller_file_name(skip_frames=1):
     """
@@ -34,6 +36,18 @@ def get_caller_file_name(skip_frames=1):
     return module_file_name
 
 
+def get_root_directory():
+    """
+    Get the root directory of this repo
+
+    >>> get_current_directory().is_relative_to(get_root_directory())
+    True
+    >>> str(get_current_directory().relative_to(get_root_directory()))
+    'aox/utils'
+    """
+    return Path('.').absolute()
+
+
 def get_current_directory(module_file_name=None):
     """
     Get the directory of the module where this is called from. Usually called as
@@ -52,7 +66,7 @@ def get_current_directory(module_file_name=None):
     return Path(os.path.dirname(os.path.realpath(module_file_name)))
 
 
-def load_module_from_path(path: Path, module_name: str = None):
+def load_module_from_path(path: Union[Path, str], module_name: str = None):
     """
     Load a module only by it's given path. This is useful when you want to load
     a single Python module from a path that either isn't in the `PYTHONPATH`, or
@@ -66,6 +80,8 @@ def load_module_from_path(path: Path, module_name: str = None):
     uses the filename
     :return:
     """
+    if isinstance(path, str):
+        path = Path(path)
     if module_name is None:
         module_name, _ = os.path.splitext(path.name)
     spec = importlib.util.spec_from_file_location(module_name, path)

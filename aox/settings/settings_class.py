@@ -10,7 +10,34 @@ from aox.styling.shortcuts import e_error, e_suggest
 from aox.utils import load_module_from_path, get_current_directory
 
 
+__all__ = [
+    'InvalidSettingsError',
+    'Settings',
+    'get_settings',
+    'ensure_default_settings',
+    'set_default_settings',
+    'set_settings',
+    'has_settings',
+]
+
+
+class UninitialisedSettingsError(Exception):
+    """
+    Error signifying that the settings were trying to be accessed before they
+    were initialised.
+    """
+
+    DEFAULT_MESSAGE = "The settings have not been initialised yet"
+
+    def __init__(self, message=DEFAULT_MESSAGE, *args):
+        super().__init__(message, *args)
+
+
 class InvalidSettingsError(Exception):
+    """
+    Error signifying that some validation did not pass during settings
+    initialisation.
+    """
     def __init__(self, message, errors):
         super().__init__(message)
         self.errors = errors
@@ -20,7 +47,9 @@ class InvalidSettingsError(Exception):
 @dataclass
 class Settings:
     is_missing: bool
-    path: Optional[Path]
+    settings_directory: Path
+    path: Path
+    sensitive_users_path: Path
     aoc_session_id: Optional['str'] = field(
         default=None,
         metadata={
@@ -39,6 +68,7 @@ class Settings:
         default=None,
         metadata={"module_attribute": "CHALLENGES_MODULE_NAME_ROOT"},
     )
+    # noinspection PyUnresolvedReferences
     challenges_boilerplate: 'aox.boilerplate.BaseBoilerplate' = field(
         default="aox.boilerplate.DefaultBoilerplate",
         metadata={
@@ -51,7 +81,7 @@ class Settings:
         default=None,
         metadata={
             "module_attribute": "SITE_DATA_PATH",
-            "warn": warnings.warn_missing_path,
+            "warn": warnings.warn_falsy_attribute,
         },
     )
     readme_path: Optional[Path] = field(
@@ -65,18 +95,20 @@ class Settings:
         default_factory=warnings.get_warnings_for_new_instance)
 
     DEFAULT_SETTINGS_DIRECTORY = Path('.aox')
-    DEFAULT_PATH = DEFAULT_SETTINGS_DIRECTORY.joinpath('user_settings.py')
-    DEFAULT_SENSITIVE_USERS_PATH = DEFAULT_SETTINGS_DIRECTORY\
-        .joinpath('sensitive_user_settings.py')
+    DEFAULT_PATH_NAME = 'user_settings.py'
+    DEFAULT_SENSITIVE_USERS_PATH_NAME = 'sensitive_user_settings.py'
     EXAMPLE_SETTINGS_DIRECTORY = \
         get_current_directory().joinpath('.example-aox')
 
     @classmethod
-    def from_default_path(cls):
-        return cls.from_path(cls.DEFAULT_PATH)
+    def from_default(cls):
+        return cls.from_settings_directory(cls.DEFAULT_SETTINGS_DIRECTORY)
 
     @classmethod
-    def from_path(cls, path):
+    def from_settings_directory(cls, settings_directory):
+        path = settings_directory.joinpath(cls.DEFAULT_PATH_NAME)
+        sensitive_users_path = settings_directory\
+            .joinpath(cls.DEFAULT_SENSITIVE_USERS_PATH_NAME)
         try:
             settings_module = load_module_from_path(path)
         except (ImportError, FileNotFoundError) as e:
@@ -85,13 +117,18 @@ class Settings:
                 f"default settings - use {e_suggest('aox init-settings')} to "
                 f"create your settings file")
             settings_module = None
-        return cls.from_settings_module(settings_module, path)
+        return cls.from_settings_module(
+            settings_module, settings_directory=settings_directory, path=path,
+            sensitive_users_path=sensitive_users_path)
 
     @classmethod
-    def from_settings_module(cls, settings_module, path):
+    def from_settings_module(cls, settings_module, settings_directory, path,
+                             sensitive_users_path):
         return cls(
             is_missing=settings_module is None,
+            settings_directory=settings_directory,
             path=path,
+            sensitive_users_path=sensitive_users_path,
             **{
                 _field.name: getattr(
                     settings_module,
@@ -102,6 +139,9 @@ class Settings:
                 if 'module_attribute' in _field.metadata
             },
         )
+
+    def __post_init__(self):
+        self.validate()
 
     def validate(self):
         validation_errors = self.get_validation_errors()
@@ -137,4 +177,37 @@ class Settings:
         return value
 
 
-settings = Settings.from_default_path()
+settings: Optional[Settings] = None
+"""The current (initialised or not) settings instance"""
+
+
+def get_settings(raise_if_missing=True) -> Settings:
+    """Get the current (initialised or not) settings"""
+    if raise_if_missing and settings is None:
+        raise UninitialisedSettingsError()
+    return settings
+
+
+def ensure_default_settings():
+    """Set the default settings, if not initialised yet"""
+    if has_settings():
+        return
+    set_default_settings()
+
+
+def set_default_settings():
+    """Update the settings instance to the one gotten by default"""
+    return set_settings(Settings.from_default())
+
+
+def set_settings(new_settings):
+    """Update the settings instance to custom one"""
+    global settings
+    settings = new_settings
+
+    return settings
+
+
+def has_settings():
+    """Check whether settings have been initialised"""
+    return settings is not None

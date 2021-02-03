@@ -1,3 +1,5 @@
 click~=7.1.2
 beautifulsoup4~=4.9.3
 requests~=2.22.0
+
+responses~=0.12.1

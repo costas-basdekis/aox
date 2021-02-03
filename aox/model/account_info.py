@@ -8,7 +8,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Dict
 
-from aox.settings import settings
+from aox.settings import get_settings
 from aox.web import AccountScraper
 
 __all__ = [
@@ -39,6 +39,32 @@ class AccountInfo:
 
     @classmethod
     def from_collected_data(cls, collected_data):
+        """
+        >>> AccountInfo.from_collected_data({
+        ...     "username": "Test User", "total_stars": 5, "years": {
+        ...         2020: {"year": 2020, "stars": 5, "days": {
+        ...             1: 2,
+        ...             2: 1,
+        ...             3: 0,
+        ...         }}}})
+        AccountInfo(username='Test User', total_stars=5, year_infos={2020:
+            AccountYearInfo(account_info=..., year=2020, stars=5,
+                day_infos={1: AccountDayInfo(year_info=..., day=1, stars=2,
+                    part_infos={'a':
+                        AccountPartInfo(day_info=..., part='a', has_star=True),
+                        'b': AccountPartInfo(day_info=..., part='b',
+                            has_star=True)}),
+                2: AccountDayInfo(year_info=..., day=2, stars=1,
+                    part_infos={'a':
+                        AccountPartInfo(day_info=..., part='a', has_star=True),
+                        'b': AccountPartInfo(day_info=..., part='b',
+                            has_star=False)}),
+                3: AccountDayInfo(year_info=..., day=3, stars=0,
+                    part_infos={'a':
+                        AccountPartInfo(day_info=..., part='a', has_star=False),
+                        'b': AccountPartInfo(day_info=..., part='b',
+                            has_star=False)})})})
+        """
         if collected_data is None:
             return None
 
@@ -55,17 +81,45 @@ class AccountInfo:
 
     @classmethod
     def from_cache(cls):
-        if not settings.site_data_path:
+        site_data_path = get_settings().site_data_path
+        if not site_data_path or not site_data_path.exists():
             return None
 
-        with settings.site_data_path.open() as f:
+        with site_data_path.open() as f:
             serialised = json.load(f)
 
         return cls.deserialise(serialised)
 
     @classmethod
     def deserialise(cls, serialised):
-        """Read the data from JSON. The data are versioned"""
+        """
+        Read the data from JSON. The data are versioned
+
+        >>> AccountInfo.deserialise(AccountInfo.from_collected_data({
+        ...     "username": "Test User", "total_stars": 5, "years": {
+        ...         2020: {"year": 2020, "stars": 5, "days": {
+        ...             1: 2,
+        ...             2: 1,
+        ...             3: 0,
+        ...         }}}}).serialise())
+        AccountInfo(username='Test User', total_stars=5, year_infos={2020:
+            AccountYearInfo(account_info=..., year=2020, stars=5,
+                day_infos={1: AccountDayInfo(year_info=..., day=1, stars=2,
+                    part_infos={'a':
+                        AccountPartInfo(day_info=..., part='a', has_star=True),
+                        'b': AccountPartInfo(day_info=..., part='b',
+                            has_star=True)}),
+                2: AccountDayInfo(year_info=..., day=2, stars=1,
+                    part_infos={'a':
+                        AccountPartInfo(day_info=..., part='a', has_star=True),
+                        'b': AccountPartInfo(day_info=..., part='b',
+                            has_star=False)}),
+                3: AccountDayInfo(year_info=..., day=3, stars=0,
+                    part_infos={'a':
+                        AccountPartInfo(day_info=..., part='a', has_star=False),
+                        'b': AccountPartInfo(day_info=..., part='b',
+                            has_star=False)})})})
+        """
         if serialised is None:
             return None
 
@@ -156,7 +210,34 @@ class AccountInfo:
             self.year_infos[year] = year_info
 
     def serialise(self):
-        """Convert to JSON. The data are versioned"""
+        """
+        Convert to JSON. The data are versioned
+
+        >>> AccountInfo.from_collected_data({
+        ...     "username": "Test User", "total_stars": 5, "years": {
+        ...         2020: {"year": 2020, "stars": 5, "days": {
+        ...             1: 2,
+        ...             2: 1,
+        ...             3: 0,
+        ...         }}}}).serialise()
+        {'version': 2, 'username': 'Test User', 'total_stars': 5, 'years':
+            {'2020': {'year': 2020, 'stars': 5, 'days':
+                {'1': {'year': 2020, 'day': 1, 'stars': 2, 'parts':
+                    {'a': {'year': 2020, 'day': 1, 'part': 'a', 'has_star':
+                        True},
+                    'b': {'year': 2020, 'day': 1, 'part': 'b', 'has_star':
+                        True}}},
+                '2': {'year': 2020, 'day': 2, 'stars': 1, 'parts':
+                    {'a': {'year': 2020, 'day': 2, 'part': 'a', 'has_star':
+                        True},
+                    'b': {'year': 2020, 'day': 2, 'part': 'b', 'has_star':
+                        False}}},
+                '3': {'year': 2020, 'day': 3, 'stars': 0, 'parts':
+                    {'a': {'year': 2020, 'day': 3, 'part': 'a', 'has_star':
+                        False},
+                    'b': {'year': 2020, 'day': 3, 'part': 'b', 'has_star':
+                        False}}}}}}}
+        """
         return {
             "version": 2,
             "username": self.username,

@@ -9,9 +9,9 @@ from pathlib import Path
 import click
 
 from aox.boilerplate.base_boilerplate import BaseBoilerplate
-from aox.settings import settings
+from aox.settings import get_settings
 
-from aox.styling.shortcuts import e_warn, e_value
+from aox.styling.shortcuts import e_warn, e_value, e_error
 from aox.utils import get_current_directory
 
 current_directory = get_current_directory()
@@ -30,6 +30,27 @@ class DefaultBoilerplate(BaseBoilerplate):
     example_part_path = example_day_path.joinpath('example_part.py')
 
     def extract_from_filename(self, filename):
+        """
+        >>> DefaultBoilerplate().extract_from_filename(
+        ...     '/home/user/git/my-aoc/year_2020/day_05/part_a.py')
+        (2020, 5, 'a')
+        >>> DefaultBoilerplate().extract_from_filename(
+        ...     'year_2020/day_05/part_a.py')
+        (2020, 5, 'a')
+        >>> DefaultBoilerplate().extract_from_filename(
+        ...     'year_2020/day_15/part_b.py')
+        (2020, 15, 'b')
+        >>> DefaultBoilerplate().extract_from_filename(
+        ...     'year_2020/day_15/part_c.py')
+        Traceback (most recent call last):
+        ...
+        Exception: ...
+        >>> DefaultBoilerplate().extract_from_filename(
+        ...     'years_2020/day_15/part_a.py')
+        Traceback (most recent call last):
+        ...
+        Exception: ...
+        """
         match = self.re_filename.match(filename)
         if not match:
             raise Exception(
@@ -44,34 +65,64 @@ class DefaultBoilerplate(BaseBoilerplate):
 
     def get_part_filename(self, year: int, day: int, part: str,
                           relative: bool = False):
-        if not settings.challenges_root:
+        """
+        >>> str(DefaultBoilerplate().get_part_filename(2020, 5, 'a', True))
+        'year_2020/day_05/part_a.py'
+        >>> str(DefaultBoilerplate().get_part_filename(2020, 15, 'a', True))
+        'year_2020/day_15/part_a.py'
+        """
+        day_directory = self.get_day_directory(year, day, relative=relative)
+        if day_directory is None:
             return None
-        return self.get_day_directory(year, day, relative=relative)\
-            .joinpath(f"part_{part}.py")
-
-    def get_day_directory(self, year: int, day: int, relative: bool = False):
-        if not settings.challenges_root:
-            return None
-        return self.get_year_directory(year, relative=relative)\
-            .joinpath(f"day_{day:0>2}")
+        return day_directory.joinpath(f"part_{part}.py")
 
     def get_day_input_filename(self, year: int, day: int,
                                relative: bool = False):
-        return self.get_day_directory(year, day, relative=relative)\
-            .joinpath("part_a_input.txt")
+        """
+        >>> str(DefaultBoilerplate().get_day_input_filename(2020, 5, True))
+        'year_2020/day_05/part_a_input.txt'
+        >>> str(DefaultBoilerplate().get_day_input_filename(2020, 15, True))
+        'year_2020/day_15/part_a_input.txt'
+        """
+        day_directory = self.get_day_directory(year, day, relative=relative)
+        if day_directory is None:
+            return None
+        return day_directory.joinpath("part_a_input.txt")
+
+    def get_day_directory(self, year: int, day: int, relative: bool = False):
+        """
+        >>> str(DefaultBoilerplate().get_day_directory(2020, 5, True))
+        'year_2020/day_05'
+        >>> str(DefaultBoilerplate().get_day_directory(2020, 15, True))
+        'year_2020/day_15'
+        """
+        year_directory = self.get_year_directory(year, relative=relative)
+        if year_directory is None:
+            return None
+        return year_directory.joinpath(f"day_{day:0>2}")
 
     def get_year_directory(self, year: int, relative: bool = False):
-        if not settings.challenges_root:
-            return None
+        """
+        >>> str(DefaultBoilerplate().get_year_directory(2020, True))
+        'year_2020'
+        """
         if relative:
             base = Path()
         else:
-            base = settings.challenges_root
+            base = get_settings().challenges_root
+        if base is None:
+            return None
         return base.joinpath(f"year_{year}")
 
     def get_part_module_name(self, year, day, part):
+        """
+        >>> DefaultBoilerplate().get_part_module_name(2020, 5, 'a')
+        'year_2020.day_05.part_a'
+        >>> DefaultBoilerplate().get_part_module_name(2020, 15, 'a')
+        'year_2020.day_15.part_a'
+        """
         return ".".join(filter(None, [
-            settings.challenges_module_name_root,
+            get_settings().challenges_module_name_root,
             f"year_{year}.day_{day:0>2}.part_{part}",
         ]))
 
@@ -80,6 +131,10 @@ class DefaultBoilerplate(BaseBoilerplate):
         year_path = self.get_year_directory(year)
         day_path = self.get_day_directory(year, day)
         part_path = self.get_part_filename(year, day, part)
+
+        if not any([year_path, day_path, part_path]):
+            click.echo(f"You {e_error(f'have not configured')} the root path")
+            return False
 
         if part_path.exists():
             click.echo(
@@ -97,6 +152,10 @@ class DefaultBoilerplate(BaseBoilerplate):
             day_init_path.touch()
             part_a_path = self.get_part_filename(year, day, 'a')
             shutil.copy(self.example_part_path, part_a_path)
+        day_input_path = day_path.joinpath("part_a_input.txt")
+        if not day_input_path.exists():
+            day_input_path.parent.mkdir(exist_ok=True)
+            day_input_path.touch()
         if not part_path.exists():
             shutil.copy(self.example_part_path, part_path)
 

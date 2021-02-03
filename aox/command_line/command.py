@@ -4,29 +4,31 @@ The definition of the command line interface, using `click`.
 Not actual work is defined here, but merely how to interact from the console.
 All work is delegated to `Controller`.
 """
+from typing import Optional
 
 import click
 
 from ..controller.controller import Controller
-from ..settings.settings_class import InvalidSettingsError
+from ..settings.settings_class import get_settings, ensure_default_settings
+
+__all__ = ['cli', 'create_cli']
 
 
 def create_cli():
-    try:
-        controller = Controller(skip_combined_info=True)
-    except InvalidSettingsError:
-        return lambda: None
+    """Create a CLI instance to run"""
+    controller = Controller()
 
     @click.group(invoke_without_command=True)
     @click.pass_context
     def aox(ctx):
         # If we're about to run `init-settings`, don't load the combined info,
         # to avoid any "missing settings" messages.
-        if not (ctx.invoked_subcommand == 'init-settings'):
+        if ctx.invoked_subcommand != 'init-settings':
+            ensure_default_settings()
             controller.reload_combined_info()
         if ctx.invoked_subcommand:
             return
-        controller.list_years_and_days(None)
+        controller.list_years()
 
     @aox.command()
     def init_settings():
@@ -40,11 +42,17 @@ def create_cli():
     @click.argument('year', type=int)
     @click.argument('day', type=int)
     @click.argument('part', type=click.Choice(['a', 'b']))
+    @click.option('-p', '--path', 'path', type=str)
     @click.option('-f', '--force', 'force', is_flag=True)
     @click.option('--test', '-t', 'filters_texts', multiple=True)
     @click.option('--debug', '-d', 'debug', is_flag=True)
     @click.pass_context
-    def challenge(ctx, year, day, part, force, filters_texts, debug):
+    def challenge(ctx, year, day, part, path, force, filters_texts, debug):
+        if path is not None:
+            year, day, part = get_settings().challenges_boilerplate\
+                .extract_from_filename(path)
+            ctx.params['year'], ctx.params['day'], ctx.params['part'] = \
+                year, day, part
         if ctx.invoked_subcommand:
             return
         controller.test_and_run_challenge(
@@ -122,9 +130,12 @@ def create_cli():
         controller.add_challenge(year, day, part)
 
     @aox.command(name='list')
-    @click.option('-y', '--year', type=int)
-    def list_years_and_days(year: int):
-        controller.list_years_and_days(year)
+    @click.argument('year', type=int, required=False, default=None)
+    def list_years_and_days(year: Optional[int]):
+        if year is None:
+            controller.list_years()
+        else:
+            controller.list_days(year)
 
     @aox.command()
     def fetch():

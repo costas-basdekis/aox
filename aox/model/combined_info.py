@@ -15,7 +15,7 @@ import click
 from aox import BaseChallenge
 from aox.model.repo_info import RepoInfo
 from aox.model.account_info import AccountInfo
-from aox.settings import settings
+from aox.settings import get_settings
 from aox.styling.shortcuts import e_error
 
 
@@ -116,6 +116,10 @@ class CombinedInfo:
                 self.year_infos[repo_year_info.year] = year_info
             year_info.amend_days_from_repo_year_info(repo_year_info)
 
+    @property
+    def has_code(self):
+        return bool(self.years_with_code)
+
     def get_challenge_instance(self, year, day, part):
         part_info = self.get_part(year, day, part)
         if not part_info:
@@ -185,7 +189,7 @@ class CombinedYearInfo(object):
 
     @property
     def relative_path(self):
-        return self.path.relative_to(settings.challenges_root)
+        return self.path.relative_to(get_settings().challenges_root)
 
     def amend_days_from_account_year_info(self, account_year_info):
         """
@@ -253,6 +257,14 @@ class CombinedYearInfo(object):
             },
         })
 
+    @property
+    def has_code(self):
+        return bool(self.days_with_code)
+
+    @property
+    def has_site_data(self):
+        return self.combined_info.has_site_data
+
     def get_day(self, day) -> Optional['CombinedDayInfo']:
         day_info = self.day_infos.get(day)
         if not day_info:
@@ -293,14 +305,6 @@ class CombinedDayInfo:
     path: Path
     parts_with_code: int
     part_infos: Dict[str, 'CombinedPartInfo'] = field(default_factory=dict)
-
-    @property
-    def year(self):
-        return self.year_info.year
-
-    @property
-    def relative_path(self):
-        return self.path.relative_to(settings.challenges_root)
 
     def amend_parts_from_account_day_info(self, account_day_info):
         """
@@ -348,6 +352,26 @@ class CombinedDayInfo:
                 )
                 self.part_infos[repo_part_info.part] = part_info
             part_info.update_status()
+
+    @property
+    def year(self):
+        return self.year_info.year
+
+    @property
+    def relative_path(self):
+        return self.path.relative_to(get_settings().challenges_root)
+
+    @property
+    def has_code(self):
+        return bool(self.parts_with_code)
+
+    @property
+    def has_site_data(self):
+        return self.year_info.has_site_data
+
+    def get_input_filename(self):
+        return get_settings().challenges_boilerplate\
+            .get_day_input_filename(self.year, self.day)
 
     def get_part(self, part) -> Optional['CombinedPartInfo']:
         part_info = self.part_infos.get(part)
@@ -397,6 +421,13 @@ class CombinedPartInfo:
         STATUS_COULD_NOT_ATTEMPT,
     ]
 
+    def __post_init__(self):
+        self.update_status()
+
+    def update_status(self):
+        """Update the status, used when we add new information"""
+        self.status = self.get_status()
+
     @property
     def year(self):
         return self.day_info.year
@@ -411,14 +442,11 @@ class CombinedPartInfo:
 
     @property
     def relative_path(self):
-        return self.path.relative_to(settings.challenges_root)
+        return self.path.relative_to(get_settings().challenges_root)
 
-    def __post_init__(self):
-        self.update_status()
-
-    def update_status(self):
-        """Update the status, used when we add new information"""
-        self.status = self.get_status()
+    @property
+    def has_site_data(self):
+        return self.day_info.has_site_data
 
     def get_status(self):
         """Calculate the status, based on the whether it's part A or B"""
@@ -431,7 +459,9 @@ class CombinedPartInfo:
 
     def get_part_a_status(self):
         """Calculate the status, as if it was part A"""
-        if self.day_info.stars >= 1:
+        if not self.has_site_data:
+            return self.STATUS_DID_NOT_ATTEMPT
+        elif self.day_info.stars >= 1:
             return self.STATUS_COMPLETE
         elif self.has_code:
             return self.STATUS_FAILED
@@ -440,7 +470,9 @@ class CombinedPartInfo:
 
     def get_part_b_status(self):
         """Calculate the status, as if it was part B"""
-        if self.day_info.stars == 2:
+        if not self.has_site_data:
+            return self.STATUS_DID_NOT_ATTEMPT
+        elif self.day_info.stars == 2:
             return self.STATUS_COMPLETE
         elif self.day_info.stars == 1:
             if self.day == 25 and self.day_info.year_info.stars < 49:
@@ -453,6 +485,9 @@ class CombinedPartInfo:
             return self.STATUS_COULD_NOT_ATTEMPT
         else:
             return self.STATUS_DID_NOT_ATTEMPT
+
+    def get_input_filename(self):
+        return self.day_info.get_input_filename()
 
     def get_challenge_instance(self):
         """Get the challenge instance from the module"""

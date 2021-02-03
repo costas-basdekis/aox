@@ -5,22 +5,23 @@ All the operations that are provided by the framework can be done via using
 
 import distutils.dir_util
 import json
-import shutil
-from dataclasses import dataclass, InitVar
+from dataclasses import dataclass
+from doctest import TestResults
+from enum import auto
 from pathlib import Path
 from typing import Optional
 
+import bs4
 import click
 
-from aox.settings import settings
+from aox.settings import get_settings, Settings, has_settings, set_settings
 from aox.model import RepoInfo, AccountInfo, CombinedInfo, CombinedPartInfo
-from aox.settings.settings_class import Settings
 from aox.web import WebAoc
 from aox.styling.shortcuts import e_warn, e_value, e_success, e_star, e_error, \
     e_unable, e_suggest
 from aox.summary import summary_registry
 from aox.testing.doctest_enhanced_testmod import testmod_with_filter
-from aox.utils import get_current_directory, time_it
+from aox.utils import get_current_directory, time_it, StringEnum
 
 current_directory = get_current_directory()
 
@@ -30,56 +31,46 @@ class Controller:
     repo_info: Optional[RepoInfo] = None
     account_info: Optional[AccountInfo] = None
     combined_info: Optional[CombinedInfo] = None
-    skip_combined_info: InitVar[bool] = False
+    interactive: bool = True
 
-    def __post_init__(self, skip_combined_info):
-        """
-        Don't load combined info if requested. This will usually be because
-        we're about to initialise settings, so we want to avoid any error
-        messages.
-        """
-        settings.validate()
-        if not skip_combined_info:
-            self.reload_combined_info()
-
-    def init_settings(self):
+    def init_settings(self, settings_directory=None):
         """Create a new settings directory for the user, if they're missing"""
-        if settings.path.exists():
+        if has_settings() and get_settings().path.exists():
             click.echo(
                 f"User settings {e_warn('already exist')} at "
-                f"{e_value(str(settings.path))}. Will not overwrite "
+                f"{e_value(str(get_settings().path))}. Will not overwrite "
                 f"them.")
-        else:
-            self.create_settings()
+            self.reload_combined_info()
+            return False
 
+        self.create_settings(settings_directory=settings_directory)
         self.reload_combined_info()
 
-    def create_settings(self):
+        return True
+
+    def create_settings(self, settings_directory=None):
         """Create a new settings directory for the user"""
+        if settings_directory is None:
+            settings_directory = Settings.DEFAULT_SETTINGS_DIRECTORY
         distutils.dir_util.copy_tree(
             Settings.EXAMPLE_SETTINGS_DIRECTORY,
-            str(Settings.DEFAULT_SETTINGS_DIRECTORY))
+            str(settings_directory))
+        set_settings(Settings.from_settings_directory(settings_directory))
         click.echo(
             f"Initialised {e_success('user settings')} at "
-            f"{e_value(str(Settings.DEFAULT_SETTINGS_DIRECTORY))}! You should "
-            f"now edit {e_value(str(Settings.DEFAULT_PATH))} and "
-            f"{e_value(str(Settings.DEFAULT_SENSITIVE_USERS_PATH))}")
-
-    def list_years_and_days(self, year: Optional[int]):
-        """List years, or days for a year, depending if a year is provided"""
-        if year is None:
-            self.list_years()
-        else:
-            self.list_days(year=year)
+            f"{e_value(str(get_settings().settings_directory))}! You should "
+            f"now edit {e_value(str(get_settings().path))} and "
+            f"{e_value(str(get_settings().sensitive_users_path))}")
 
     def list_years(self):
         """List all the years that have code or stars"""
         click.echo(
-            f"Found {e_success(str(len(self.combined_info.year_infos)))} years "
-            f"with {e_star(str(self.combined_info.total_stars) + ' stars')}:")
+            f"Found {e_success(str(self.combined_info.years_with_code))} years "
+            f"with code and "
+            f"{e_star(str(self.combined_info.total_stars) + ' stars')}:")
         for year, year_info in sorted(
                 self.combined_info.year_infos.items(), reverse=True):
-            if not year_info.days_with_code and not year_info.stars:
+            if not year_info.has_code and not year_info.stars:
                 continue
             click.echo(
                 f"  * {e_success(str(year))}: "
@@ -97,72 +88,75 @@ class Controller:
         """List all the days for a particular year"""
         year_info = self.combined_info.year_infos.get(year)
         if not year_info or (
-                not year_info.days_with_code and not year_info.stars):
+                not year_info.has_code and not year_info.stars):
             click.echo(
                 f"Could not find {e_error(str(year))} in code nor any stars")
-            return
-        if not year_info.days_with_code:
+            return False
+        if not year_info.has_code:
             click.echo(
                 f"Could not find {e_error(str(year))} in code, but found "
                 f"{e_star(f'{year_info.stars} stars')}")
-            return
+            return False
         click.echo(
             f"Found {e_success(str(year_info.days_with_code))} days with code "
             f"in {e_value(str(year))} with "
             f"{e_star(f'{year_info.stars} stars')}:")
         days_string = ', '.join(
             (
-                    e_success(str(day))
-                    + self.STATUS_ICON_MAP[day_info.part_infos['a'].status]
-                    + self.STATUS_ICON_MAP[day_info.part_infos['b'].status]
+                e_success(str(day))
+                + self.STATUS_ICON_MAP[day_info.part_infos['a'].status]
+                + self.STATUS_ICON_MAP[day_info.part_infos['b'].status]
             )
-            for day, day_info in reversed(year_info.day_infos.items())
-            if day_info.parts_with_code
+            for day, day_info
+            in sorted(year_info.day_infos.items(), reverse=True)
+            if day_info.has_code
         )
         click.echo(f"  * {days_string}")
+
+        return True
 
     def dump_data(self):
         """Dump the combined data, for diagnostic purposes"""
         if not self.combined_info:
             click.echo(f"There are {e_error('no data loaded')} to dump")
-            return
+            return False
         print(json.dumps(self.combined_info.serialise(), indent=2))
+
+        return True
 
     def fetch_account_info(self):
         """Refresh the stars from the AOC website"""
         account_info = AccountInfo.from_site()
         if account_info is None:
             click.echo(f"Could {e_error('not fetch data')}")
-            return
+            return False
 
-        if settings.site_data_path:
-            with settings.site_data_path.open('w') as f:
+        if get_settings().site_data_path:
+            with get_settings().site_data_path.open('w') as f:
                 json.dump(account_info.serialise(), f, indent=2)
 
-        if not account_info.username:
-            star_count_text = 'unknown'
-        else:
-            star_count_text = str(account_info.total_stars)
-            self.update_combined_info(account_info=account_info)
+        self.update_combined_info(account_info=account_info)
         click.echo(
             f"Fetched data for {e_success(account_info.username)}: "
-            f"{e_star(f'{star_count_text} stars')} in "
+            f"{e_star(f'{str(account_info.total_stars)} stars')} in "
             f"{e_success(str(len(account_info.year_infos)))} years")
+
+        return True
 
     def update_readme(self):
         """
         Update README with summaries, presumably because code or stars were
         added.
         """
-        readme_path = settings.readme_path
+        readme_path = get_settings().readme_path
         if not readme_path:
-            return
+            return False
         if not self.combined_info.has_site_data:
             click.echo(
                 f"Since {e_error('local site data')} are missing the "
                 f"README {e_error('cannot be updated')}: run "
                 f"{e_suggest('aox fetch')} first")
-            return
+            return False
 
         readme_text = readme_path.read_text()
 
@@ -170,29 +164,31 @@ class Controller:
             readme_text, self.combined_info)
         if updated_readme_text == readme_text:
             click.echo(f"No need to update {e_success('README')}")
-            return
+            return False
 
         readme_path.write_text(updated_readme_text)
         click.echo(f"Updated {e_success('README')} with site data")
 
+        return True
+
     def refresh_challenge_input(self, year, day, only_if_empty=True):
         """Refresh a challenge's input from the AOC website"""
-        input_path = settings.challenges_boilerplate\
+        input_path = get_settings().challenges_boilerplate\
             .get_day_input_filename(year, day)
         if only_if_empty and input_path.exists() and input_path.lstat().st_size:
-            return
+            return False
 
         _input = WebAoc().get_input_page(year, day)
         if not _input:
             click.echo(
                 f"Could not update input for {e_error(f'{year} {day}')}")
-            return
+            return False
 
         if input_path.exists() and _input == input_path.read_text():
             click.echo(
                 f"Input did not change for {e_warn(f'{year} {day}')} "
                 f"({e_value(f'{len(_input)} bytes')})")
-            return
+            return False
 
         input_path.write_text(_input)
 
@@ -201,10 +197,13 @@ class Controller:
             f"({e_value(f'{len(_input)} bytes')}) at "
             f"{e_value(str(input_path))}")
 
+        return True
+
     def add_challenge(self, year: int, day: int, part: str):
         """Add challenge code boilerplate, if it's not already there"""
-        if not settings.challenges_boilerplate.create_part(year, day, part):
-            return
+        if not get_settings().challenges_boilerplate\
+                .create_part(year, day, part):
+            return False
         self.refresh_challenge_input(year=year, day=day)
         part_filename = self.combined_info.get_part(year, day, part).path
         click.echo(
@@ -213,68 +212,73 @@ class Controller:
 
         self.update_combined_info(repo_info=RepoInfo.from_roots())
 
-    def challenge(self, year, day, part, force, rest):
-        """Invoke a challenge"""
-        challenge_instance = self.get_or_create_challenge(
-            year, day, part, force)
-        if not challenge_instance:
-            return
-        challenge_instance.run_main_arguments(args=rest, obj={
-            'aox_controller': self,
-        })
+        return True
 
     def test_and_run_challenge(self, year, day, part, force, filters_texts,
                                debug):
         challenge_instance = self.get_or_create_challenge(
             year, day, part, force)
         if not challenge_instance:
-            return
-        self.test_challenge(year, day, part, force, filters_texts)
-        self.run_challenge(year, day, part, force, debug)
+            return False, None, None
+        test_results = self.test_challenge(
+            year, day, part, force, filters_texts)
+        _, solution = self.run_challenge(year, day, part, force, debug)
+
+        return True, test_results, solution
 
     def test_challenge(self, year, day, part, force, filters_texts):
         challenge_instance = self.get_or_create_challenge(
             year, day, part, force)
         if not challenge_instance:
-            return
+            return None
         filters_text = " ".join(filters_texts)
         test_modules = challenge_instance.get_test_modules()
         with time_it() as stats:
-            results = [
+            modules_and_results = [
                 (module,
                  testmod_with_filter(
                      module, optionflags=challenge_instance.optionflags,
                      filters_text=filters_text))
                 for module in test_modules
             ]
-        total_attempted = sum(result.attempted for _, result in results)
-        total_failed = sum(result.failed for _, result in results)
+        results = TestResults(
+            attempted=sum(
+                result.attempted
+                for _, result in modules_and_results
+            ),
+            failed=sum(
+                result.failed
+                for _, result in modules_and_results
+            ),
+        )
         failed_modules = [
             module.__name__
             if module else
             'main'
-            for module, result in results
+            for module, result in modules_and_results
             if result.failed
         ]
         if failed_modules:
             click.echo(
-                f"{e_error(f'{total_failed}/{total_attempted} tests')} "
+                f"{e_error(f'{results.failed}/{results.attempted} tests')} "
                 f"in {len(failed_modules)}/{len(test_modules)} modules "
                 f"{e_error('failed')} "
                 f"in {round(stats['duration'], 2)}s"
                 f": {e_error(', '.join(failed_modules))}")
         else:
             click.echo(
-                f"{total_attempted} tests "
+                f"{results.attempted} tests "
                 f"in {len(test_modules)} modules "
                 f"{e_success('passed')} "
                 f"in {round(stats['duration'], 2)}s")
+
+        return results
 
     def run_challenge(self, year, day, part, force, debug):
         challenge_instance = self.get_or_create_challenge(
             year, day, part, force)
         if not challenge_instance:
-            return
+            return False, None
         with time_it() as stats:
             solution = challenge_instance.default_solve(debug=debug)
         if solution is None:
@@ -285,99 +289,180 @@ class Controller:
             f"Solution: {styled_solution}"
             f" (in {round(stats['duration'], 2)}s)")
 
+        return True, solution
+
     def play_challenge(self, year, day, part, force):
         challenge_instance = self.get_or_create_challenge(
             year, day, part, force)
         if not challenge_instance:
-            return
-        challenge_instance.play()
+            return False, None
+        result = challenge_instance.play()
+
+        return True, result
 
     def get_and_submit_challenge_solution(self, year, day, part, force,
                                           no_prompt, solution):
-        challenge_instance = self.get_or_create_challenge(
-            year, day, part, force)
-        if not challenge_instance:
-            return
+        attempted, submitted, success = False, False, False
+
         if not WebAoc().is_configured():
             click.echo(
                 f"You haven't set {e_error('AOC_SESSION_ID')} in "
                 f"{e_error('user_settings.py')}")
-            return None
+            return attempted, submitted, success
 
         solution = self.get_solution(
-            challenge_instance, year, day, part, no_prompt, solution)
-        if solution is None:
-            return
-
-        self.submit_challenge_solution(
             year, day, part, force, no_prompt, solution)
+        if solution is None:
+            return attempted, submitted, success
 
-    def submit_challenge_solution(self, year, day, part, force, no_prompt,
-                                  solution):
-        challenge_instance = self.get_or_create_challenge(
-            year, day, part, force)
-        if not challenge_instance:
-            return
+        return self.submit_challenge_solution(
+            year, day, part, no_prompt, solution)
+
+    def submit_challenge_solution(self, year, day, part, no_prompt, solution):
+        attempted, submitted, success = False, False, False
+
+        part_info = self.combined_info\
+            .get_part(year, day, part)
+        if not part_info:
+            return attempted, submitted, success
+
+        attempted = True
         answer_page = WebAoc().submit_solution(year, day, part, solution)
         if not answer_page:
-            return
+            return attempted, submitted, success
 
+        submitted = True
         message = answer_page.article.text
-        is_final_part = self.combined_info\
-            .get_part(year, day, part).is_final_part
-        if "That's the right answer" in message:
+        is_final_part = part_info.is_final_part
+        success, result = self.get_submission_result(is_final_part, message)
+        self.echo_submission_result(solution, message, result)
+
+        if success:
+            self.fetch_and_update_readme_if_agreed(no_prompt)
+
+        return attempted, submitted, success
+
+    class SubmissionResult(StringEnum):
+        RightAnswer = auto()
+        AlreadyCompleted = auto()
+        WrongAnswer = auto()
+        TooSoon = auto()
+        RightFinalAnswer = auto()
+        Unknown = auto()
+
+    def echo_submission_result(self, solution, message, result):
+        """
+        >>> Controller().echo_submission_result(
+        ...     "1", "Hi", Controller.SubmissionResult.RightAnswer)
+        Congratulations! ...
+        >>> Controller().echo_submission_result(
+        ...     "1", "Hi", Controller.SubmissionResult.AlreadyCompleted)
+        It looks like you have already ...
+        >>> Controller().echo_submission_result(
+        ...     "1", "Hi", Controller.SubmissionResult.WrongAnswer)
+        It looks like 1 was the wrong answer...
+        >>> Controller().echo_submission_result(
+        ...     "1", "Hi", Controller.SubmissionResult.TooSoon)
+        It looks like you need to wait ...
+        >>> Controller().echo_submission_result(
+        ...     "1", "Hi", Controller.SubmissionResult.RightFinalAnswer)
+        Congratulations! ...
+        >>> Controller().echo_submission_result(
+        ...     "1", "Hi", Controller.SubmissionResult.Unknown)
+        It's not clear ...
+        """
+        if result == self.SubmissionResult.RightAnswer:
             click.echo(
                 f"Congratulations! That was {e_success('the right answer')}!\n"
-                f"{message}")
-            success = True
-        elif "Did you already complete it" in message:
+                f"{message}"
+            )
+        elif result == self.SubmissionResult.AlreadyCompleted:
             click.echo(
                 f"It looks like you have {e_warn('already completed it')}:\n"
-                f"{message}")
-            success = False
-        elif "That's not the right answer" in message:
+                f"{message}"
+            )
+        elif result == self.SubmissionResult.WrongAnswer:
             click.echo(
                 f"It looks like {e_value(solution)} was the "
-                f"{e_error('wrong answer')}:\n {message}")
-            success = False
-        elif "You gave an answer too recently" in message:
+                f"{e_error('wrong answer')}:\n {message}"
+            )
+        elif result == self.SubmissionResult.TooSoon:
             click.echo(
-                f"It looks like you need {e_warn('to wait a bit')}:\n{message}")
-            success = False
-        elif is_final_part and 'congratulations' in message.lower():
+                f"It looks like you need {e_warn('to wait a bit')}:\n{message}"
+            )
+        elif result == self.SubmissionResult.RightFinalAnswer:
             click.echo(
                 f"Congratulations! "
                 f"{e_success('You completed the whole year!')}!\n"
-                f"{message}")
-            success = True
-        else:
+                f"{message}"
+            )
+        elif result == self.SubmissionResult.Unknown:
             click.echo(
-                f"It's not clear {e_warn('what was the response')}:\n{message}")
-            success = False
+                f"It's not clear {e_warn('what was the response')}:\n{message}"
+            )
+        else:
+            raise Exception(f"Don't know how to convey result '{result}'")
 
-        if success:
-            if no_prompt:
-                fetch_and_update_readme = True
-            else:
-                fetch_and_update_readme = click.prompt(
-                    f"Do you want to {e_success('fetch stars')} and "
-                    f"{e_success('update the README')}?",
-                    type=bool, default=True)
-            if fetch_and_update_readme:
-                click.echo(
-                    f"Fetching {e_star('stars')} and updating "
-                    f"{e_success('README')}...")
-                self.fetch_account_info()
-                self.update_readme()
-            else:
-                click.echo(
-                    f"Make sure to do {e_suggest('aox fetch')} and "
-                    f"{e_suggest('aox update-readme')}")
+    def get_submission_result(self, is_final_part, message):
+        """
+        >>> def get_submission_result_from_html(_is_final_part, html_name):
+        ...     return Controller().get_submission_result(
+        ...        _is_final_part, bs4.BeautifulSoup(Path('').joinpath(
+        ...            'tests', 'test_controller', 'test_controller',
+        ...            'submission_replies', html_name).read_text(),
+        ...            'html.parser').article.text)
+        >>> get_submission_result_from_html(False, 'right_answer.html')
+        (True, <SubmissionResult.RightAnswer: '...'>)
+        >>> get_submission_result_from_html(False, 'already_completed.html')
+        (True, <SubmissionResult.AlreadyCompleted: '...'>)
+        >>> get_submission_result_from_html(False, 'wrong_answer.html')
+        (False, <SubmissionResult.WrongAnswer: '...'>)
+        >>> get_submission_result_from_html(False, 'too_soon.html')
+        (False, <SubmissionResult.TooSoon: '...'>)
+        >>> get_submission_result_from_html(True, 'right_final_answer.html')
+        (True, <SubmissionResult.RightFinalAnswer: '...'>)
+        >>> get_submission_result_from_html(False, 'unknown.html')
+        (False, <SubmissionResult.Unknown: '...'>)
+        """
+        if "That's the right answer" in message:
+            return True, self.SubmissionResult.RightAnswer
+        elif "Did you already complete it" in message:
+            return True, self.SubmissionResult.AlreadyCompleted
+        elif "That's not the right answer" in message:
+            return False, self.SubmissionResult.WrongAnswer
+        elif "You gave an answer too recently" in message:
+            return False, self.SubmissionResult.TooSoon
+        elif is_final_part and 'congratulations' in message.lower():
+            return True, self.SubmissionResult.RightFinalAnswer
+        else:
+            return False, self.SubmissionResult.Unknown
 
-    def get_solution(self, challenge_instance, day, year, part, no_prompt,
-                     solution):
-        is_final_part = self.combined_info\
-            .get_part(year, day, part).is_final_part
+    def fetch_and_update_readme_if_agreed(self, no_prompt):
+        if no_prompt:
+            fetch_and_update_readme = True
+        else:
+            fetch_and_update_readme = self.prompt(
+                f"Do you want to {e_success('fetch stars')} and "
+                f"{e_success('update the README')}?",
+                type=bool, default=True, no_prompt_default=False)
+        if not fetch_and_update_readme:
+            click.echo(
+                f"Make sure to do {e_suggest('aox fetch')} and "
+                f"{e_suggest('aox update-readme')}")
+            return
+
+        click.echo(
+            f"Fetching {e_star('stars')} and updating "
+            f"{e_success('README')}...")
+        self.fetch_account_info()
+        self.update_readme()
+
+    def get_solution(self, year, day, part, force, no_prompt, solution):
+        part_info = self.combined_info\
+            .get_part(year, day, part)
+        if not part_info:
+            return None
+        is_final_part = part_info.is_final_part
         if no_prompt or solution not in (None, ""):
             if is_final_part:
                 solve_first = False
@@ -386,17 +471,25 @@ class Controller:
             else:
                 solve_first = solution in (None, "")
         else:
+            solve_first = True
+
+        if solve_first:
+            challenge_instance = self.get_or_create_challenge(
+                year, day, part, force)
+            if not challenge_instance:
+                return None
+
             if is_final_part:
                 default_solution = "1"
             else:
                 default_solution = ""
-            solution = click.prompt(
+            solution = self.prompt(
                 "Run to get the solution, or enter it manually?",
-                default=default_solution)
+                default=default_solution, no_prompt_default=default_solution)
             solve_first = not solution
+            if solve_first:
+                solution = challenge_instance.default_solve()
 
-        if solve_first:
-            solution = challenge_instance.default_solve()
         if solution in (None, ""):
             click.echo(f"{e_error('No solution')} was provided")
             return None
@@ -406,9 +499,9 @@ class Controller:
             old_solution = None
             while old_solution != solution:
                 old_solution = solution
-                solution = click.prompt(
+                solution = self.prompt(
                     f"Submitting solution {e_value(solution)}",
-                    default=solution)
+                    default=solution, no_prompt_default=solution)
         else:
             click.echo(
                 f"Submitting solution {e_value(solution)}")
@@ -431,10 +524,10 @@ class Controller:
     def add_challenge_if_agreed(self, year: int, day: int, part: str,
                                 force: bool):
         if not force:
-            should_create_challenge = click.prompt(
+            should_create_challenge = self.prompt(
                 f"Do you want to create challenge "
                 f"{e_value(f'{year} {day} {part.upper()}')}?",
-                type=bool, default=True)
+                type=bool, default=True, no_prompt_default=False)
         else:
             should_create_challenge = True
         if not should_create_challenge:
@@ -463,3 +556,8 @@ class Controller:
             repo_info=self.repo_info,
             account_info=self.account_info,
         )
+
+    def prompt(self, text, no_prompt_default, **kwargs):
+        if not self.interactive:
+            return no_prompt_default
+        return click.prompt(text, **kwargs)

@@ -24,23 +24,30 @@ class SubmissionsSummary(BaseSummary):
         ':grey_exclamation:',
     }
 
-    def generate(self, combined_data: CombinedInfo):
+    def generate(self, combined_info: CombinedInfo):
+        table = self.get_table(combined_info)
+        link_definitions = self.get_link_definitions(combined_info)
+
+        return f"\n\n{table}\n\n{link_definitions}\n\n"
+
+    def get_table(self, combined_info):
         years = sorted((
             year
-            for year, year_info in combined_data.year_infos.items()
-            if year_info.days_with_code or year_info.stars
+            for year, year_info in combined_info.year_infos.items()
+            if year_info.has_code or year_info.stars
         ), reverse=True)
         headers = ('',) + tuple(map(str, years))
         dividers = (' ---:',) + (':---:',) * len(years)
         year_stars = ('',) + tuple(
-            self.get_submission_year_stars_text(combined_data.year_infos[year])
+            self.get_submission_year_stars_text(combined_info.year_infos[year])
             for year in years
         )
-        year_links_tuples = [
+        # noinspection PyTypeChecker
+        year_links_tuples = [('',)] + [
             (
                 (
-                    f"[Code][co-{str(year)[-2:]}]"
-                    if year_info.days_with_code else
+                    f"[Code][{self.get_code_year_link_name(year)}]"
+                    if year_info.has_code else
                     'Code'
                 ),
                 '&',
@@ -48,42 +55,21 @@ class SubmissionsSummary(BaseSummary):
                 f"[Challenges][ch-{str(year)[-2:]}]",
             )
             for year in years
-            for year_info in (combined_data.year_infos[year],)
+            for year_info in (combined_info.year_infos[year],)
         ]
+        # noinspection PyTypeChecker
         day_links_tuples_list = [
-            [
+            [(f"{day: >2}",)] + [
                 self.get_submission_year_day_stars_tuple(
-                    combined_data.year_infos[year].day_infos[day])
+                    combined_info.year_infos[year].day_infos[day])
                 for year in years
             ]
             for day in range(1, 26)
         ]
 
-        list_of_tuples_to_align = [
-            list(column)
-            for column
-            in zip(*([year_links_tuples] + day_links_tuples_list))
-        ]
-        list_of_aligned_tuples = [
-            utils.align_rows(column)
-            for column in list_of_tuples_to_align
-        ]
-
-        aligned_year_links_tuples = [
-            _tuple[0]
-            for _tuple in list_of_aligned_tuples
-        ]
-        aligned_day_links_tuples_list = list(zip(*(
-            _tuple[1:]
-            for _tuple in list_of_aligned_tuples
-        )))
-
-        year_links = ('',) + tuple(map(' '.join, aligned_year_links_tuples))
-        day_links_list = [
-            (f"{day: >2}",) + tuple(map(' '.join, day_links_tuples))
-            for day, day_links_tuples
-            in zip(range(1, 26), aligned_day_links_tuples_list)
-        ]
+        year_links, *day_links_list = \
+            utils.simplify_divided_rows(
+                [year_links_tuples] + day_links_tuples_list)
 
         table_rows = [
             headers,
@@ -92,33 +78,34 @@ class SubmissionsSummary(BaseSummary):
             year_stars,
         ] + day_links_list
 
-        table = utils.join_rows(table_rows)
+        return utils.join_rows(table_rows)
 
-        table = "\n".join(
-            f"| {' | '.join(row)} |"
-            for row in aligned_table_rows
-        )
+    def get_link_definitions(self, combined_info):
+        years = sorted((
+            year
+            for year, year_info in combined_info.year_infos.items()
+            if year_info.has_code or year_info.stars
+        ), reverse=True)
 
         web_aoc = WebAoc()
 
-        link_definitions = "\n\n".join(
+        return "\n\n".join(
             "\n".join([
-                f"[ch-{str(year)[-2:]}]: {web_aoc.get_year_url(year)}",
-                f"[co-{str(year)[-2:]}]: "
-                f"{combined_data.get_year(year).relative_path}",
+                f"[{self.get_challenge_year_link_name(year)}]: "
+                f"{web_aoc.get_year_url(year)}",
+                f"[{self.get_code_year_link_name(year)}]: "
+                f"{combined_info.get_year(year).relative_path}",
             ] + sum((
                 [
-                    f"[ch-{str(year)[-2:]}-{day:0>2}]: "
+                    f"[{self.get_challenge_day_link_name(year, day)}]: "
                     f"{web_aoc.get_day_url(year, day)}",
-                    f"[co-{str(year)[-2:]}-{day:0>2}]: "
-                    f"{combined_data.get_day(year, day).relative_path}",
+                    f"[{self.get_code_day_link_name(year, day)}]: "
+                    f"{combined_info.get_day(year, day).relative_path}",
                 ]
                 for day in range(1, 26)
             ), []))
             for year in years
         )
-
-        return f"\n\n{table}\n\n{link_definitions}\n\n"
 
     def get_submission_year_stars_text(
             self, year_info: CombinedYearInfo):
@@ -135,11 +122,45 @@ class SubmissionsSummary(BaseSummary):
     def get_submission_year_day_stars_tuple(self, day_info: CombinedDayInfo):
         return (
             (
-                f"[Code][co-{str(day_info.year)[-2:]}-{day_info.day:0>2}]"
-                if day_info.part_infos["a"].has_code else
+                f"[Code]"
+                f"[{self.get_code_day_link_name(day_info.year, day_info.day)}]"
+                if day_info.has_code else
                 'Code'
             ),
             self.PART_STATUS_EMOJI_MAP[day_info.part_infos["a"].status],
             self.PART_STATUS_EMOJI_MAP[day_info.part_infos["b"].status],
-            f"[Challenge][ch-{str(day_info.year)[-2:]}-{day_info.day:0>2}]",
+            f"[Challenge]["
+            f"{self.get_challenge_day_link_name(day_info.year, day_info.day)}]",
         )
+
+    def get_code_year_link_name(self, year):
+        """
+        >>> SubmissionsSummary().get_code_year_link_name(2019)
+        'co-19'
+        """
+        return f"co-{str(year)[-2:]}"
+
+    def get_code_day_link_name(self, year, day):
+        """
+        >>> SubmissionsSummary().get_code_day_link_name(2019, 5)
+        'co-19-05'
+        >>> SubmissionsSummary().get_code_day_link_name(2019, 15)
+        'co-19-15'
+        """
+        return f"co-{str(year)[-2:]}-{day:0>2}"
+
+    def get_challenge_year_link_name(self, year):
+        """
+        >>> SubmissionsSummary().get_challenge_year_link_name(2019)
+        'ch-19'
+        """
+        return f"ch-{str(year)[-2:]}"
+
+    def get_challenge_day_link_name(self, year, day):
+        """
+        >>> SubmissionsSummary().get_challenge_day_link_name(2019, 5)
+        'ch-19-05'
+        >>> SubmissionsSummary().get_challenge_day_link_name(2019, 15)
+        'ch-19-15'
+        """
+        return f"ch-{str(year)[-2:]}-{day:0>2}"

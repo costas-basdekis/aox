@@ -4,8 +4,9 @@ from typing import Optional
 import bs4
 import click
 import requests
+from requests import Response
 
-from aox.settings import settings
+from aox.settings import get_settings
 from aox.styling.shortcuts import e_error
 
 
@@ -20,7 +21,7 @@ class WebAoc:
     The session ID is necessary before any request.
     """
     session_id: Optional[str] = field(
-        default_factory=lambda: settings.aoc_session_id)
+        default_factory=lambda: get_settings().aoc_session_id)
 
     root_url = 'https://adventofcode.com'
     headers = {
@@ -29,21 +30,49 @@ class WebAoc:
     cookies = {}
 
     def get_events_url(self):
+        """
+        >>> WebAoc('test-session').get_events_url()
+        'https://adventofcode.com/events'
+        """
         return f"{self.root_url}/events"
 
     def get_year_url(self, year):
+        """
+        >>> WebAoc('test-session').get_year_url(2020)
+        'https://adventofcode.com/2020'
+        """
         return f"{self.root_url}/{year}"
 
     def get_day_url(self, year, day):
+        """
+        >>> WebAoc('test-session').get_day_url(2020, 5)
+        'https://adventofcode.com/2020/day/5'
+        """
         return f"{self.root_url}/{year}/day/{day}"
 
     def get_input_url(self, year, day):
+        """
+        >>> WebAoc('test-session').get_input_url(2020, 5)
+        'https://adventofcode.com/2020/day/5/input'
+        """
         return f"{self.root_url}/{year}/day/{day}/input"
 
     def get_answer_url(self, year, day):
+        """
+        >>> WebAoc('test-session').get_answer_url(2020, 5)
+        'https://adventofcode.com/2020/day/5/answer'
+        """
         return f"{self.root_url}/{year}/day/{day}/answer"
 
     def is_configured(self):
+        """
+        >>> WebAoc('test-session').is_configured()
+        True
+        >>> WebAoc(None).is_configured()
+        False
+        >>> WebAoc('').is_configured()
+        False
+        """
         return bool(self.session_id)
 
     def get_events_page(self):
@@ -121,14 +150,38 @@ class WebAoc:
         return response
 
     def get_headers(self, extra_headers=None):
-        """Construct the headers for a request"""
+        """
+        Construct the headers for a request
+
+        >>> WebAoc('test-session').get_headers()
+        {'User-Agent': 'aox'}
+        >>> WebAoc('test-session').get_headers({})
+        {'User-Agent': 'aox'}
+        >>> WebAoc('test-session').get_headers({'User-Agent': 'test'})
+        {'User-Agent': 'test'}
+        >>> WebAoc('test-session').get_headers(
+        ...     {'User-Agent': 'test', 'foo': 'bar'})
+        {'User-Agent': 'test', 'foo': 'bar'}
+        """
         return {
             **self.headers,
             **(extra_headers or {}),
         }
 
     def get_cookies(self, extra_cookies=None):
-        """Construct the cookies for a request"""
+        """
+        Construct the cookies for a request
+
+        >>> WebAoc('test-session').get_cookies()
+        {'session': 'test-session'}
+        >>> WebAoc('test-session').get_cookies({})
+        {'session': 'test-session'}
+        >>> WebAoc('test-session').get_cookies({'session': 'other'})
+        {'session': 'other'}
+        >>> WebAoc('test-session').get_cookies(
+        ...     {'session': 'other', 'foo': 'bar'})
+        {'session': 'other', 'foo': 'bar'}
+        """
         return {
             "session": self.session_id,
             **self.cookies,
@@ -136,7 +189,23 @@ class WebAoc:
         }
 
     def parse(self, response, _type, name):
-        """Parse a response as a particular type (eg HTML)"""
+        """
+        Parse a response as a particular type (eg HTML)
+
+        >>> _response = Response()
+        >>> _response._content = b'<html><body><article>Hi'
+        >>> _response.status_code = 200
+        >>> html = WebAoc('test-session').parse(_response, 'html', 'test')
+        >>> html
+        <html><body><article>Hi</article></body></html>
+        >>> html.article
+        <article>Hi</article>
+        >>> _response = Response()
+        >>> _response._content = b'Hello there'
+        >>> _response.status_code = 200
+        >>> WebAoc('test-session').parse(_response, 'text', 'test')
+        'Hello there'
+        """
         if _type == 'html':
             return self.as_html(response, name)
         if _type == 'text':
@@ -145,7 +214,22 @@ class WebAoc:
             raise Exception(f"Unknown parse type '{_type}'")
 
     def as_html(self, response, name):
-        """Parse a response as HTML"""
+        """
+        Parse a response as HTML
+
+        >>> _response = Response()
+        >>> _response._content = b'<html><body><article>Hi'
+        >>> _response.status_code = 200
+        >>> html = WebAoc('test-session').as_html(_response, 'test')
+        >>> html
+        <html><body><article>Hi</article></body></html>
+        >>> html.article
+        <article>Hi</article>
+        >>> _response = Response()
+        >>> _response._content = b'Oops'
+        >>> _response.status_code = 400
+        >>> WebAoc('test-session').as_html(_response, 'test')
+        """
         if not response:
             return None
 
@@ -159,7 +243,19 @@ class WebAoc:
         return bs4.BeautifulSoup(response.text, "html.parser")
 
     def as_text(self, response, name):
-        """Parse a response as text"""
+        """
+        Parse a response as text
+
+        >>> _response = Response()
+        >>> _response._content = b'Hello there'
+        >>> _response.status_code = 200
+        >>> WebAoc('test-session').as_text(_response, 'test')
+        'Hello there'
+        >>> _response = Response()
+        >>> _response._content = b'Oops'
+        >>> _response.status_code = 400
+        >>> WebAoc('test-session').as_text(_response, 'test')
+        """
         if not response:
             return None
 

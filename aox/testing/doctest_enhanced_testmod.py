@@ -46,7 +46,7 @@ def testmod_with_finder(
     Augment `testmod` with the ability to pass a custom `DocTestFinder`
     instance, that allows for selecting specific tests.
 
-    Optional keyword arg "finder" specifies a finder instance to use, besdies
+    Optional keyword arg "finder" specifies a finder instance to use, besides
     the default `DocTestFinder`.
     """
     # If no module was given, then use __main__.

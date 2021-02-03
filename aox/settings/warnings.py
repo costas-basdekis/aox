@@ -53,11 +53,12 @@ def warn_missing_instance(settings, name, module_attribute, value):
     warn_attribute(settings, name, module_attribute, value)
 
 
+# noinspection PyUnusedLocal
 def warn_attribute(settings, name, module_attribute, value):
     if value:
         click.echo(
-            f"The value '{e_value(value)}' for {e_error(module_attribute)} is "
-            f"invalid.")
+            f"The value '{e_value(str(value))}' for "
+            f"{e_error(module_attribute)} is invalid.")
     elif settings.is_missing:
         click.echo(
             f"You haven't set {e_error(module_attribute)} - use "

@@ -10,5 +10,5 @@ class Challenge(BaseChallenge):
         """
 
 
+Challenge.main()
 challenge = Challenge()
-challenge.main()

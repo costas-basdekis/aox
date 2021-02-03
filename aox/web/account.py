@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass, field
 
+import bs4
 import click
 
 from aox.styling.shortcuts import e_error
@@ -42,6 +43,19 @@ class AccountScraper:
         """
         Extract the username. If there isn't a username, there is no information
         to gather.
+
+        >>> AccountScraper(WebAoc('test-session')).get_username(
+        ...     bs4.BeautifulSoup(
+        ...         "<html><body>"
+        ...         "<div class='user'>Test User <span class='star-count'>50*",
+        ...         "html.parser"))
+        'Test User'
+        >>> AccountScraper(WebAoc('test-session')).get_username(
+        ...     bs4.BeautifulSoup(
+        ...         "<html><body>"
+        ...         "<a href='/2020/auth/login'>[Log In]</a>",
+        ...         "html.parser"))
+        Either ... user name
         """
         user_nodes = events_page.select(".user")
         if not user_nodes:
@@ -63,18 +77,69 @@ class AccountScraper:
         return text_children[0].strip()
 
     def get_total_stars(self, events_page):
-        """Grab the total stars"""
+        """
+        Grab the total stars
+
+        >>> AccountScraper(WebAoc('test-session')).get_total_stars(
+        ...     bs4.BeautifulSoup(
+        ...         "<html><body>"
+        ...         "<div class='eventlist-event'><a href='/'>[2020]</a>"
+        ...         "<span class='star-count'>39*</span></div>"
+        ...         "<p>Total stars: <span class='star-count'>64*</span>",
+        ...         "html.parser"))
+        64
+        >>> AccountScraper(WebAoc('test-session')).get_total_stars(
+        ...     bs4.BeautifulSoup(
+        ...         "<html><body>"
+        ...         "<div class='eventlist-event'><a href='/'>[2020]</a>"
+        ...         "<span class='star-count'>39*</span></div>",
+        ...         "html.parser"))
+        """
         total_stars_nodes = events_page.select("p > .star-count")
         return self.parse_star_count(total_stars_nodes)
 
-    re_stars = re.compile(r'^(\d+)\*$')
-
     def parse_star_count(self, stars_nodes, default=None):
-        """Star counts are represented in the same way everywhere"""
+        """
+        Star counts are represented in the same way everywhere
+
+        >>> AccountScraper(WebAoc('test-session')).parse_star_count(
+        ...     [bs4.BeautifulSoup(
+        ...         "<span class='star-count'>39*</span></div>",
+        ...         "html.parser")])
+        39
+        >>> AccountScraper(WebAoc('test-session')).parse_star_count(
+        ...     [bs4.BeautifulSoup(
+        ...         "<span class='star-count'>39*</span></div>",
+        ...         "html.parser")], default=0)
+        39
+        >>> AccountScraper(WebAoc('test-session')).parse_star_count([])
+        >>> AccountScraper(WebAoc('test-session')).parse_star_count([], 0)
+        0
+        """
         if not stars_nodes:
             return default
         stars_node = stars_nodes[0]
-        stars_match = self.re_stars.match(stars_node.text.strip())
+
+        return self.parse_star_count_text(stars_node.text, default=default)
+
+    re_stars = re.compile(r'^(\d+)\*$')
+
+    def parse_star_count_text(self, text, default=None):
+        """
+        >>> AccountScraper(WebAoc('test-session')).parse_star_count_text('0*')
+        0
+        >>> AccountScraper(WebAoc('test-session')).parse_star_count_text('120*')
+        120
+        >>> AccountScraper(WebAoc('test-session'))\\
+        ...     .parse_star_count_text('120*', default=0)
+        120
+        >>> AccountScraper(WebAoc('test-session'))\\
+        ...     .parse_star_count_text('star?')
+        >>> AccountScraper(WebAoc('test-session'))\\
+        ...     .parse_star_count_text('star?', default=0)
+        0
+        """
+        stars_match = self.re_stars.match(text.strip())
         if not stars_match:
             return default
 
@@ -82,6 +147,26 @@ class AccountScraper:
         return int(stars_text)
 
     def get_years_stars(self, events_page):
+        """
+        >>> AccountScraper(WebAoc('test-session')).get_years_stars(
+        ...     bs4.BeautifulSoup(
+        ...         "<html><body>"
+        ...         "<div class='eventlist-event'><a href='/'>[2020]</a>"
+        ...         "<span class='star-count'>39*</span></div>"
+        ...         "<div class='eventlist-event'><a href='/'>[2019]</a>"
+        ...         "<span class='star-count'>20*</span></div>"
+        ...         "<div class='eventlist-event'><a href='/'>[2018]</a>"
+        ...         " </div>"
+        ...         "<p>Total stars: <span class='star-count'>64*</span>",
+        ...         "html.parser"))
+        {2020: 39, 2019: 20}
+        >>> AccountScraper(WebAoc('test-session')).get_years_stars(
+        ...     bs4.BeautifulSoup(
+        ...         "<html><body>"
+        ...         "<p>Total stars: <span class='star-count'>64*</span>",
+        ...         "html.parser"))
+        {}
+        """
         stars_nodes = events_page.select(".eventlist-event .star-count")
         years_nodes = [node.parent for node in stars_nodes]
         return {
@@ -94,7 +179,22 @@ class AccountScraper:
     re_year = re.compile(r'^\[(\d+)]$')
 
     def get_year_stars(self, year_node):
-        """Get the stars for a year from a year node in the events page"""
+        """
+        Get the stars for a year from a year node in the events page
+
+        >>> AccountScraper(WebAoc('test-session')).get_year_stars(
+        ...     bs4.BeautifulSoup(
+        ...         "<div class='eventlist-event'><a href='/'>[2020]</a>"
+        ...         "<span class='star-count'>39*</span></div>",
+        ...         "html.parser"))
+        (2020, 39)
+        >>> AccountScraper(WebAoc('test-session')).get_year_stars(
+        ...     bs4.BeautifulSoup(
+        ...         "<div class='eventlist-event'><a href='/'>[2020]</a>"
+        ...         " </div>",
+        ...         "html.parser"))
+        (2020, 0)
+        """
         year_name_node = year_node.findChild('a')
         if not year_name_node:
             return None
@@ -113,6 +213,24 @@ class AccountScraper:
         year_page = self.web_aoc.get_year_page(year)
         if year_page is None:
             return None
+
+        return self.collect_year_from_page(year_page, year, stars)
+
+    def collect_year_from_page(self, year_page, year, stars):
+        """
+        >>> AccountScraper(WebAoc('test-session')).collect_year_from_page(
+        ...     bs4.BeautifulSoup(
+        ...         "<html><body><article>"
+        ...         "<pre class='calendar calendar-perfect'>"
+        ...         "<a aria-label='Day 15, two stars' href='/2020/day/15' "
+        ...         "class='calendar-day15 calendar-verycomplete'>"
+        ...         "Very fancy day text"
+        ...         "<span class='calendar-day'>15</span> <span "
+        ...         "class='calendar-mark-complete'>*</span>"
+        ...         "<span class='calendar-mark-verycomplete'>*</span></a>",
+        ...         "html.parser"), 2020, 38)
+        {'year': 2020, 'stars': 38, 'days': {15: 2}}
+        """
         year_data = {
             "year": year,
             "stars": stars,
@@ -130,6 +248,48 @@ class AccountScraper:
         return year_data
 
     def collect_day(self, day_node):
+        """
+        >>> AccountScraper(WebAoc('test-session')).collect_day(
+        ...     bs4.BeautifulSoup(
+        ...         "<a aria-label='Day 15, two stars' href='/2020/day/15' "
+        ...         "class='calendar-day15 calendar-verycomplete'>"
+        ...         "Very fancy day text"
+        ...         "<span class='calendar-day'>15</span> <span "
+        ...         "class='calendar-mark-complete'>*</span>"
+        ...         "<span class='calendar-mark-verycomplete'>*</span></a>",
+        ...         "html.parser").a)
+        (15, 2)
+        >>> AccountScraper(WebAoc('test-session')).collect_day(
+        ...     bs4.BeautifulSoup(
+        ...         "<a aria-label='Day 15, two stars' href='/2020/day/15' "
+        ...         "class='calendar-day15 calendar-complete'>"
+        ...         "Very fancy day text"
+        ...         "<span class='calendar-day'>15</span> <span "
+        ...         "class='calendar-mark-complete'>*</span>"
+        ...         "<span class='calendar-mark-verycomplete'>*</span></a>",
+        ...         "html.parser").a)
+        (15, 1)
+        >>> AccountScraper(WebAoc('test-session')).collect_day(
+        ...     bs4.BeautifulSoup(
+        ...         "<a aria-label='Day 15, two stars' href='/2020/day/15' "
+        ...         "class='calendar-day15 '>"
+        ...         "Very fancy day text"
+        ...         "<span class='calendar-day'>15</span> <span "
+        ...         "class='calendar-mark-complete'>*</span>"
+        ...         "<span class='calendar-mark-verycomplete'>*</span></a>",
+        ...         "html.parser").a)
+        (15, 0)
+        >>> AccountScraper(WebAoc('test-session')).collect_day(
+        ...     bs4.BeautifulSoup(
+        ...         "<a aria-label='Day 15, two stars' href='/2020/day/15' "
+        ...         "class='calendar-day15 '>"
+        ...         "Very fancy day text"
+        ...         "<span class='what-calendar-day'>15</span> <span "
+        ...         "class='calendar-mark-complete'>*</span>"
+        ...         "<span class='calendar-mark-verycomplete'>*</span></a>",
+        ...         "html.parser").a)
+        (None, None)
+        """
         day_name_nodes = day_node.select(".calendar-day")
         if not day_name_nodes:
             return None, None
