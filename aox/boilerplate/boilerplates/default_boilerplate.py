@@ -4,6 +4,7 @@ The default way to structure parts: `year_xxxx/day_xx/part_x.py`
 
 import re
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 import click
@@ -20,14 +21,15 @@ current_directory = get_current_directory()
 __all__ = ['DefaultBoilerplate']
 
 
+@dataclass
 class DefaultBoilerplate(BaseBoilerplate):
     """The default way to structure parts `year_xxxx/day_xx/part_x.py`"""
     re_filename = re.compile(r"^(?:.*/)?year_(\d+)/day_(\d+)/part_([ab]).py$")
 
-    example_year_path = current_directory\
+    example_year_path: Path = current_directory\
         .joinpath('default_boilerplate_example_year')
-    example_day_path = example_year_path.joinpath('example_day')
-    example_part_path = example_day_path.joinpath('example_part.py')
+    example_day_path: Path = example_year_path.joinpath('example_day')
+    example_part_path: Path = example_day_path.joinpath('example_part.py')
 
     def extract_from_filename(self, filename):
         """
