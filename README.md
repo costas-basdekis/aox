@@ -1,10 +1,17 @@
 # aox - Python Advent of Code Submissions helper
 
 ![Tests](https://github.com/costas-basdekis/aox/workflows/Tests/badge.svg)
-[![PyPI version](https://badge.fury.io/py/aox.svg)](https://badge.fury.io/py/aox)
+[![AOX version](https://pypip.in/v/aox/badge.png)](https://pypi.org/project/aox/1.0/)
+![AOX downloads](https://pypip.in/d/aox/badge.png)]
 
-This is a framework to make it easier to develop Python solutions for [AOC],
-with some useful features for writing and submitting.
+AOX was created with the following ideals:
+
+1. I wanted to be able to run tests for each challenge
+2. I didn't want to write the same code to load the input, run the tests, and
+print the result
+3. I wanted all of my challenges to have the same structure
+
+The main feature of AOX is auto-creating the boilerplate for each challenge,
 
 Currently only Python>=3.7 is supported.
 
@@ -68,15 +75,6 @@ aox add 2020 1 b
 And so on
 
 ## Features
-
-AOX was created because of the following criteria:
-
-1. I wanted to be able to run tests for each challenge
-2. I didn't want to write the same code to load the input, run the tests, and
-print the result
-3. I wanted all of my challenges to have the same structure
-
-The main feature of AOX is auto-creating the boilerplate for each challenge,
 
 #### Custom boilerplate
 
