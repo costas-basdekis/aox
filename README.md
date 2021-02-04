@@ -1,8 +1,8 @@
 # aox - Python Advent of Code Submissions helper
 
 ![Tests](https://github.com/costas-basdekis/aox/workflows/Tests/badge.svg)
-[![AOX version](https://pypip.in/v/aox/badge.png)](https://pypi.org/project/aox/1.0/)
-![AOX downloads](https://pypip.in/d/aox/badge.png)]
+[![AOX version](https://pypip.in/v/aox/badge.png)](https://pypi.org/project/aox/)
+![AOX downloads](https://pypip.in/d/aox/badge.png)
 
 AOX was created with the following ideals:
 
