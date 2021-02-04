@@ -9,7 +9,7 @@ current_directory = get_current_directory()
 
 
 @dataclass
-class TestBoilerplate(DefaultBoilerplate):
+class DummyBoilerplate(DefaultBoilerplate):
     example_year_path = current_directory\
         .joinpath('test_boilerplate_example_year')
     example_day_path: Path = example_year_path.joinpath('test_example_day')

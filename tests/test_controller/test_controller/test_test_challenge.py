@@ -2,7 +2,7 @@ import doctest
 from unittest import TestCase
 
 from tests.test_controller.test_controller.test_boilerplate import \
-    TestBoilerplate
+    DummyBoilerplate
 from tests.utils import using_controller, amending_settings
 
 
@@ -13,7 +13,7 @@ class TestControllerTestChallenge(TestCase):
             expected_result):
         with using_controller([], None, interactive=False) \
                 as (controller, combined_info, _), \
-                amending_settings(challenges_boilerplate=TestBoilerplate()):
+                amending_settings(challenges_boilerplate=DummyBoilerplate()):
             if original_replacement is not None:
                 controller.add_challenge(year, day, part)
                 part_info = combined_info.get_part(year, day, part)

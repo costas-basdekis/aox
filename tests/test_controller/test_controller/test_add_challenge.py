@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from unittest import TestCase
 
 from tests.test_controller.test_controller.test_boilerplate import \
-    TestBoilerplate
+    DummyBoilerplate
 from tests.utils import using_controller, amending_settings
 
 
@@ -10,7 +10,7 @@ class TestControllerAddChallenge(TestCase):
     @contextmanager
     def checking_add_challenge(self, year, day, part, expected_result):
         with using_controller([], None) as (controller, combined_info, _), \
-                amending_settings(challenges_boilerplate=TestBoilerplate()):
+                amending_settings(challenges_boilerplate=DummyBoilerplate()):
             expected_contents = {}
             yield controller, combined_info, expected_contents
             self.assertEqual(controller.add_challenge(
@@ -28,15 +28,15 @@ class TestControllerAddChallenge(TestCase):
                 as (_, combined_info, expected_contents):
             part_info = combined_info.get_part(2020, 1, 'a')
             expected_contents[part_info.path] = \
-                TestBoilerplate.example_part_path.read_text()
+                DummyBoilerplate.example_part_path.read_text()
             expected_contents[part_info.get_input_filename()] = \
-                TestBoilerplate.example_input_path.read_text()
+                DummyBoilerplate.example_input_path.read_text()
 
     def test_add_existing_part_doesnt_overwrite_it(self):
         with self.checking_add_challenge(2020, 1, 'a', False) \
                 as (controller, combined_info, expected_contents):
             controller.add_challenge(2020, 1, 'a')
-            part_a_py_content = TestBoilerplate.example_part_path.read_text()\
+            part_a_py_content = DummyBoilerplate.example_part_path.read_text()\
                 .replace("FUNCTION-BODY", 'return "Custom body"')
             day_input_content = "Some input\nFor 2020 1 A"
 

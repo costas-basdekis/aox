@@ -6,7 +6,7 @@ import bs4
 from aox.utils import get_current_directory
 from aox.web import WebAoc
 from tests.test_controller.test_controller.test_boilerplate import \
-    TestBoilerplate
+    DummyBoilerplate
 from tests.utils import using_controller, amending_settings
 
 current_directory = get_current_directory()
@@ -24,7 +24,7 @@ class TestControllerSubmitChallengeSolution(TestCase):
             response = None
         with using_controller([], None, interactive=False) \
                 as (controller, combined_info, _), \
-                amending_settings(challenges_boilerplate=TestBoilerplate()), \
+                amending_settings(challenges_boilerplate=DummyBoilerplate()), \
                 patch.object(WebAoc, 'submit_solution', return_value=response):
             self.assertEqual(controller.submit_challenge_solution(
                 year, day, part, no_prompt=True, solution=solution),
