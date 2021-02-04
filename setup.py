@@ -3,12 +3,14 @@ import os
 from distutils.core import setup
 from pathlib import Path
 
+from aox.version import AOX_PACKAGE_VERSION_LABEL
+
 current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
 
 
 setup(
     name='aox',
-    version='1.0',
+    version=AOX_PACKAGE_VERSION_LABEL,
     description='AdventOfCode Submissions Framework',
     author='Costas Basdekis',
     author_email='costas@basdekis.io',

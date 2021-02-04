@@ -13,6 +13,8 @@ from aox.settings import settings_proxy
 
 __all__ = ['cli', 'create_cli']
 
+from aox.version import AOX_VERSION_LABEL
+
 
 def create_cli():
     """Create a CLI instance to run"""
@@ -22,12 +24,18 @@ def create_cli():
         invoke_without_command=True,
         help=(
             "A utility tool to manage your code, and display a summary of your "
-            "stars, for your Advent of Code submissions"
+            "stars, for your Advent of Code submissions\n"
+            "\n"
+            f"Version: {AOX_VERSION_LABEL}"
         ),
         short_help="Manage code & stars for AOC submissions",
     )
+    @click.option('-v', '--version', 'show_version', is_flag=True)
     @click.pass_context
-    def aox(ctx):
+    def aox(ctx, show_version=False):
+        if show_version:
+            ctx.invoke(version)
+            return
         # If we're about to run `init-settings`, don't load the combined info,
         # to avoid any "missing settings" messages.
         if ctx.invoked_subcommand != 'init-settings':
@@ -36,6 +44,15 @@ def create_cli():
         if ctx.invoked_subcommand:
             return
         controller.list_years()
+
+    @aox.command(
+        help=(
+            f"Show current version: {AOX_VERSION_LABEL}"
+        ),
+        short_help=f"Current version: {AOX_VERSION_LABEL}",
+    )
+    def version():
+        click.echo(AOX_VERSION_LABEL)
 
     @aox.command(
         help=(
