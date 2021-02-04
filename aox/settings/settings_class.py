@@ -116,10 +116,13 @@ class Settings:
                 _field.name: getattr(
                     settings_module,
                     _field.metadata['module_attribute'],
-                    _field.default,
                 )
                 for _field in fields(cls)
                 if 'module_attribute' in _field.metadata
+                and hasattr(
+                    settings_module,
+                    _field.metadata['module_attribute'],
+                )
             },
         )
 
