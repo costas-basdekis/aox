@@ -49,3 +49,10 @@ The path for your README file, so that it can update the stats.
 
 This needs to be a `Path` instance.
 """
+
+EXTRA_MODULE_IMPORTS = []
+"""
+Also import these extra modules, eg if you specify custom summaries.
+
+It needs to be a list of strings that are valid module names.
+"""

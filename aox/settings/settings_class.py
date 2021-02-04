@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field, fields
+from importlib import import_module
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 import click
 
@@ -74,6 +75,12 @@ class Settings:
             "warn": warnings.warn_missing_path,
         },
     )
+    extra_module_imports: List[str] = field(
+        default_factory=list,
+        metadata={
+            "module_attribute": "EXTRA_MODULE_IMPORTS",
+        },
+    )
     _warnings: Dict[str, Any] = field(
         default_factory=warnings.get_warnings_for_new_instance)
 
@@ -128,6 +135,7 @@ class Settings:
 
     def __post_init__(self):
         self.validate()
+        self.post_settings_init()
 
     def validate(self):
         validation_errors = self.get_validation_errors()
@@ -161,3 +169,10 @@ class Settings:
             value = warn(self, item, module_attribute, value)
             setattr(self, item, value)
         return value
+
+    def post_settings_init(self):
+        self.load_extra_module_imports()
+
+    def load_extra_module_imports(self):
+        for module_name in self.extra_module_imports:
+            import_module(module_name)
