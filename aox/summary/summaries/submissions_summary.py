@@ -2,7 +2,6 @@ from aox import utils
 from aox.model import CombinedDayInfo, CombinedYearInfo, CombinedPartInfo, \
     CombinedInfo
 from aox.summary.base_summary import BaseSummary, summary_registry
-from aox.web import WebAoc
 
 
 __all__ = ['SubmissionsSummary']
@@ -80,31 +79,35 @@ class SubmissionsSummary(BaseSummary):
 
         return utils.join_rows(table_rows)
 
-    def get_link_definitions(self, combined_info):
+    def get_link_definitions(self, combined_info: CombinedInfo):
         years = sorted((
             year
             for year, year_info in combined_info.year_infos.items()
             if year_info.has_code or year_info.stars
         ), reverse=True)
 
-        web_aoc = WebAoc()
-
         return "\n\n".join(
             "\n".join([
                 f"[{self.get_challenge_year_link_name(year)}]: "
-                f"{web_aoc.get_year_url(year)}",
+                f"{year_info.get_year_url()}",
                 f"[{self.get_code_year_link_name(year)}]: "
-                f"{combined_info.get_year(year).relative_path}",
+                f"{year_info.relative_path}",
             ] + sum((
                 [
                     f"[{self.get_challenge_day_link_name(year, day)}]: "
-                    f"{web_aoc.get_day_url(year, day)}",
+                    f"{day_info.get_day_url()}",
                     f"[{self.get_code_day_link_name(year, day)}]: "
-                    f"{combined_info.get_day(year, day).relative_path}",
+                    f"{day_info.relative_path}",
                 ]
-                for day in range(1, 26)
+                for day, day_info in (
+                    (day, year_info.get_day(day))
+                    for day in range(1, 26)
+                )
             ), []))
-            for year in years
+            for year, year_info in (
+                (year, combined_info.get_year(year))
+                for year in years
+            )
         )
 
     def get_submission_year_stars_text(

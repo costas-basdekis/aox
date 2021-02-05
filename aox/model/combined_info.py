@@ -26,6 +26,8 @@ __all__ = [
     'CombinedPartInfo',
 ]
 
+from aox.web import WebAoc
+
 
 @dataclass
 class CombinedInfo:
@@ -265,6 +267,9 @@ class CombinedYearInfo(object):
     def has_site_data(self):
         return self.combined_info.has_site_data
 
+    def get_year_url(self) -> str:
+        return WebAoc().get_year_url(self.year)
+
     def get_day(self, day) -> Optional['CombinedDayInfo']:
         day_info = self.day_infos.get(day)
         if not day_info:
@@ -372,6 +377,12 @@ class CombinedDayInfo:
     def get_input_filename(self):
         return settings_proxy().challenges_boilerplate\
             .get_day_input_filename(self.year, self.day)
+
+    def get_year_url(self) -> str:
+        return self.year_info.get_year_url()
+
+    def get_day_url(self) -> str:
+        return WebAoc().get_day_url(self.year, self.day)
 
     def get_part(self, part) -> Optional['CombinedPartInfo']:
         part_info = self.part_infos.get(part)
@@ -488,6 +499,12 @@ class CombinedPartInfo:
 
     def get_input_filename(self):
         return self.day_info.get_input_filename()
+
+    def get_year_url(self) -> str:
+        return self.day_info.get_year_url()
+
+    def get_day_url(self) -> str:
+        return self.day_info.get_day_url()
 
     def get_challenge_instance(self):
         """Get the challenge instance from the module"""
