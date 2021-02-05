@@ -208,10 +208,18 @@ class Controller:
         click.echo(
             f"Added challenge {e_success(f'{year} {day} {part.upper()}')} at "
             f"{e_value(str(part_filename))}")
+        self.show_challenge_urls(year, day)
 
         self.update_combined_info(repo_info=RepoInfo.from_roots())
 
         return True
+
+    def show_challenge_urls(self, year: int, day: int):
+        """Show the links to the day and the year"""
+        day_info = self.combined_info.get_day(year, day)
+        click.echo(
+            f"You can see the challenge at {day_info.get_day_url()}, and the "
+            f"whole event at {day_info.get_year_url()}")
 
     def test_and_run_challenge(self, year, day, part, force, filters_texts,
                                debug):

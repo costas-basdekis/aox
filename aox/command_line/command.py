@@ -116,6 +116,18 @@ def create_cli():
             params['year'], params['day'], only_if_empty=False)
 
     @challenge.command(
+        name="url",
+        help=(
+            "Show the URLs to the day and year for this challenge"
+        ),
+        short_help="Show day and year URLs",
+    )
+    @click.pass_context
+    def show_urls(ctx):
+        params = ctx.parent.params
+        controller.show_challenge_urls(params['year'], params['day'])
+
+    @challenge.command(
         name="all",
         help=(
             "Test and run the challenge code"
