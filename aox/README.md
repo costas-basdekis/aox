@@ -76,13 +76,12 @@ Various utilities exist in [aox.utils], colouring shortcuts in
 ![Python package](https://github.com/costas-basdekis/aox/workflows/Python%20package/badge.svg)
 
 Testing is mostly done via [doctests], which are collected via [pytest]. We also
-use [flake8] to lint:
+use [flake8] (via [pytest-flake8]) to lint:
 
 ```shell script
 pip install -r test_requirements.txt
 pip install -r requirements.txt
 pytest
-flake8
 ```
 
 If you can use doctests inline in modules, and for more advance cases write unit
@@ -91,4 +90,5 @@ tests in [tests]
 [doctests]: https://docs.python.org/3/library/doctest.html
 [pytest]: https://docs.py``test.org/en/stable/
 [flake8]: https://flake8.pycqa.org/en/3.1.1/index.html
+[pytest-flake8]: https://pypi.org/project/pytest-flake8/
 [tests]: ../tests
