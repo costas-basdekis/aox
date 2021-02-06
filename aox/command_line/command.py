@@ -200,7 +200,7 @@ def create_cli():
         ),
         short_help="Submit the solution to AOC",
     )
-    @click.option('--yes', '-y', 'no_prompt')
+    @click.option('--yes', '-y', 'no_prompt', is_flag=True)
     @click.option('--solution', '-s', 'solution')
     @click.pass_context
     def submit(ctx, **params):
