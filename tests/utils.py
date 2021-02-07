@@ -120,3 +120,9 @@ def using_controller(parts_to_create_on_disk, collected_data, color=False,
         else:
             controller.combined_info = combined_info
         yield controller, combined_info, captured
+
+
+class DummyModule:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)

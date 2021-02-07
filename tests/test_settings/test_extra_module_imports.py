@@ -7,18 +7,12 @@ from unittest import TestCase
 from aox.settings import Settings
 from aox.utils import get_current_directory
 from tests.test_settings.dummy_registry import dummy_registry
-from tests.utils import resetting_modules
+from tests.utils import resetting_modules, DummyModule
 
 current_directory = get_current_directory()
 example_dummy_registrant_contents = current_directory\
     .joinpath('example_dummy_registrant.py')\
     .read_bytes()
-
-
-class DummyModule:
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 
 
 class TestExtraModuleImports(TestCase):

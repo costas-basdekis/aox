@@ -8,8 +8,7 @@ import click
 from aox.settings import warnings
 from aox.settings.warnings import SettingsValidationError
 from aox.styling.shortcuts import e_error, e_suggest
-from aox.utils import load_module_from_path, get_current_directory
-
+from aox.utils import load_module_from_path, get_current_directory, Module
 
 __all__ = [
     'InvalidSettingsError',
@@ -33,6 +32,7 @@ class Settings:
     is_missing: bool
     settings_directory: Path
     path: Path
+    module: Module
     sensitive_users_path: Path
     aoc_session_id: Optional['str'] = field(
         default=None,
@@ -118,6 +118,7 @@ class Settings:
             is_missing=settings_module is None,
             settings_directory=settings_directory,
             path=path,
+            module=settings_module,
             sensitive_users_path=sensitive_users_path,
             **{
                 _field.name: getattr(

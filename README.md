@@ -375,6 +375,22 @@ specify your README path
 README_PATH = repo_root.joinpath('README.md')
 ```
 
+#### Custom settings
+
+If you want to keep some extra settings, you can add them to
+`.aox/user_settings.py`, and you can access them via the `settings.module`
+attribute:
+
+```python
+MY_CUSTOM_SETTING = "foo"
+```
+
+```python
+from aox.settings import settings_proxy
+# Make sure to always use `settings_proxy()`
+print(settings_proxy().module.MY_CUSTOM_SETTING)
+```
+
 ## Contributing:
 
 Please see the relevant section in [aox](./aox)
