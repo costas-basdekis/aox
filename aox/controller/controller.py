@@ -492,9 +492,13 @@ class Controller:
                 default_solution = "1"
             else:
                 default_solution = ""
-            solution = self.prompt(
-                "Run to get the solution, or enter it manually?",
-                default=default_solution, no_prompt_default=default_solution)
+            if no_prompt:
+                solution = default_solution
+            else:
+                solution = self.prompt(
+                    "Run to get the solution, or enter it manually?",
+                    default=default_solution,
+                    no_prompt_default=default_solution)
             solve_first = not solution
             if solve_first:
                 solution = challenge_instance.default_solve()
