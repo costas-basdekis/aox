@@ -227,6 +227,9 @@ from aox.summary import BaseSummary, summary_registry
 
 @summary_registry.register
 class MyCustomSummary(BaseSummary):
+    # Don't forget to set your prefix
+    marker_prefix = "my-custom"
+
     def generate(self, combined_info):
       years_with_stars_or_code = [
         year
@@ -243,6 +246,20 @@ class MyCustomSummary(BaseSummary):
 Don't forget to import your module, which can easily be done in your settings:
 ```python
 EXTRA_MODULE_IMPORTS = ['my_custom_summary']
+```
+
+And to add the following lines in your README:
+```markdown
+[//]: # (my-custom-start)
+[//]: # (my-custom-end)
+```
+
+And after every `aox update-readme` you should see something like this:
+
+```markdown
+Your custom markdown using stars & code info:
+You have stars or code in 2 years
+In 2020 you had 50 :star:
 ```
 
 ### Settings
@@ -346,7 +363,8 @@ There is no reason to change this, and by default it lives in the `.aox` folder.
 In case you want it somewhere else (eg your home directory), you can replace
 this (remembering to use `Path`).
 ```python
-SITE_DATA_PATH = dot_aox.joinpath('site_data.json')
+# Save this info in my home directory
+SITE_DATA_PATH = Path.home().joinpath('aoc_site_data.json')
 ```
 
 #### README location
