@@ -4,7 +4,6 @@ Combine local and site information about a user's submissions.
 The main entry point is `CombinedInfo.from_repo_and_account_infos`.
 """
 
-import importlib
 import itertools
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,6 +16,7 @@ from aox.model.repo_info import RepoInfo
 from aox.model.account_info import AccountInfo
 from aox.settings import settings_proxy
 from aox.styling.shortcuts import e_error
+from aox.utils import try_import_module
 
 
 __all__ = [
@@ -535,11 +535,11 @@ class CombinedPartInfo:
 
     def get_module(self):
         """Load the module for this challenge part"""
-        try:
-            return importlib.import_module(self.module_name)
-        except ImportError:
+        module = try_import_module(self.module_name)
+        if not module:
             click.echo(f"Could not find {e_error(self.module_name)}")
-            return None
+
+        return module
 
     def serialise(self):
         return {
