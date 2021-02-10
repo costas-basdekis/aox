@@ -19,7 +19,7 @@ from aox.styling.shortcuts import e_warn, e_value, e_success, e_star, e_error, \
     e_unable, e_suggest
 from aox.summary import summary_registry
 from aox.testing.doctest_enhanced_testmod import testmod_with_filter
-from aox.utils import get_current_directory, time_it, StringEnum
+from aox.utils import get_current_directory, StringEnum, Timer
 
 current_directory = get_current_directory()
 
@@ -240,7 +240,7 @@ class Controller:
             return None
         filters_text = " ".join(filters_texts)
         test_modules = challenge_instance.get_test_modules()
-        with time_it() as stats:
+        with Timer() as timer:
             modules_and_results = [
                 (module,
                  testmod_with_filter(
@@ -270,14 +270,14 @@ class Controller:
                 f"{e_error(f'{results.failed}/{results.attempted} tests')} "
                 f"in {len(failed_modules)}/{len(test_modules)} modules "
                 f"{e_error('failed')} "
-                f"in {round(stats['duration'], 2)}s"
+                f"in {round(timer.duration, 2)}s"
                 f": {e_error(', '.join(failed_modules))}")
         else:
             click.echo(
                 f"{results.attempted} tests "
                 f"in {len(test_modules)} modules "
                 f"{e_success('passed')} "
-                f"in {round(stats['duration'], 2)}s")
+                f"in {round(timer.duration, 2)}s")
 
         return results
 
@@ -286,7 +286,7 @@ class Controller:
             year, day, part, force)
         if not challenge_instance:
             return False, None
-        with time_it() as stats:
+        with Timer() as timer:
             solution = challenge_instance.default_solve(debug=debug)
         if solution is None:
             styled_solution = e_error(str(solution))
@@ -294,7 +294,7 @@ class Controller:
             styled_solution = e_value(str(solution))
         click.echo(
             f"Solution: {styled_solution}"
-            f" (in {round(stats['duration'], 2)}s)")
+            f" (in {round(timer.duration, 2)}s)")
 
         return True, solution
 
