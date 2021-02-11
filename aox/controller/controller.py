@@ -270,14 +270,14 @@ class Controller:
                 f"{e_error(f'{results.failed}/{results.attempted} tests')} "
                 f"in {len(failed_modules)}/{len(test_modules)} modules "
                 f"{e_error('failed')} "
-                f"in {round(timer.duration, 2)}s"
+                f"in {timer.get_pretty_duration(2)}"
                 f": {e_error(', '.join(failed_modules))}")
         else:
             click.echo(
                 f"{results.attempted} tests "
                 f"in {len(test_modules)} modules "
                 f"{e_success('passed')} "
-                f"in {round(timer.duration, 2)}s")
+                f"in {timer.get_pretty_duration(2)}")
 
         return results
 
@@ -294,7 +294,7 @@ class Controller:
             styled_solution = e_value(str(solution))
         click.echo(
             f"Solution: {styled_solution}"
-            f" (in {round(timer.duration, 2)}s)")
+            f" (in {timer.get_pretty_duration(2)})")
 
         return True, solution
 
