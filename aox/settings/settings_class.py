@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, fields
 from importlib import import_module
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable, TYPE_CHECKING
 
 import click
 
@@ -9,6 +9,8 @@ from aox.settings import warnings
 from aox.settings.warnings import SettingsValidationError
 from aox.styling.shortcuts import e_error, e_suggest
 from aox.utils import load_module_from_path, get_current_directory, Module
+if TYPE_CHECKING:
+    from aox.challenge import Debugger  # noqa: F401
 
 __all__ = [
     'InvalidSettingsError',
@@ -81,6 +83,14 @@ class Settings:
             "module_attribute": "EXTRA_MODULE_IMPORTS",
         },
     )
+    default_debugger_report_format: \
+        Optional[Callable[['Debugger', str], str]] = field(
+            default=None,
+            metadata={
+                "module_attribute": "DEFAULT_DEBUGGER_REPORT_FORMAT",
+                "warn": warnings.warn_falsy_attribute,
+            },
+        )
     _warnings: Dict[str, Any] = field(
         default_factory=warnings.get_warnings_for_new_instance)
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional, TypeVar
 
+from aox.settings import settings_proxy
 from aox.utils import Timer, pretty_duration
 from aox.utils import DummyTimer  # noqa: F401
 
@@ -62,7 +63,7 @@ class Debugger:
             indent_increase='  ')
         >>> debugger.report()
         Debugger(timer=Timer(default_timer=DT(2, 1), start=0, end=None),
-            enabled=True, step_count=1, step_count_since_last_report=0,
+            enabled=True, step_count=0, step_count_since_last_report=0,
             min_report_interval_seconds=5, last_report_time=1, indent='',
             indent_increase='  ')
         >>> debugger.reset()
@@ -148,7 +149,7 @@ class Debugger:
         >>> debugger.report().step().step().step()
         Debugger(...)
         >>> debugger.step_frequency
-        1.75
+        1.5
         """
         return self.step_count / self.duration_since_start
 
@@ -226,8 +227,7 @@ class Debugger:
 
         return self
 
-    def report(self: DebuggerT, *args, step_count: int = 1, **kwargs,
-               ) -> DebuggerT:
+    def report(self: DebuggerT, *args, **kwargs) -> DebuggerT:
         """
         Output a message
 
@@ -247,7 +247,6 @@ class Debugger:
         ??a message
         Debugger(...)
         """
-        self.step(step_count)
         if args:
             if self.indent not in (None, ""):
                 print(self.indent, end="")
@@ -257,6 +256,18 @@ class Debugger:
         self.step_count_since_last_report = 0
 
         return self
+
+    def default_report(self: DebuggerT, message, **kwargs) -> DebuggerT:
+        """
+        Output a message with the default format from settings.
+        """
+        from aox.settings import settings_proxy
+        default_debugger_report_format = settings_proxy()\
+            .default_debugger_report_format
+        if default_debugger_report_format:
+            message = default_debugger_report_format(self, message)
+
+        return self.report(message, **kwargs)
 
     def report_if(self: DebuggerT, *args, **kwargs) -> DebuggerT:
         """
@@ -283,3 +294,15 @@ class Debugger:
         self.report(*args, **kwargs)
 
         return self
+
+    def default_report_if(self: DebuggerT, message, **kwargs) -> DebuggerT:
+        """
+        Output a message with the default format from settings, if it's
+        appropriate.
+        """
+        default_debugger_report_format = settings_proxy()\
+            .default_debugger_report_format
+        if default_debugger_report_format:
+            message = default_debugger_report_format(self, message)
+
+        return self.report_if(message, **kwargs)

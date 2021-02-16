@@ -193,6 +193,11 @@ Advance the step count once, and print something to the console, if the debugger
 is enabled, and enough time has passed since the last reporting (default is
 `5s`, controlled by the `--debug-interval`/`-i` flag).
 
+> `debugger.default_report()` and `debugger.default_report_if()`
+
+Similar to the above, but it uses the formatting function from the
+`DEFAULT_DEBUGGER_REPORT_FORMAT` to include some useful data in the output.
+
 > `debugger.duration_since_start` and `debugger.duration_since_last_report`, as
 > well as `debugger.pretty_duration_*` and `debugger.get_pretty_duration_*()`
 
@@ -406,6 +411,37 @@ class MyCustomBoilerplate(aox.boilerplate.DefaultBoilerplate):
 And use it:
 ```python
 CHALLENGES_BOILERPLATE = "my_custom_boilerplate.MyCustomBoilerplate"
+```
+
+#### Default format
+
+To avoid repeating yourself every time you want to print something out, you can
+define (or use the default) formatter function to add some standard details:
+
+```python
+def verbose_debugger_format(debugger: 'Debugger', message: str) -> str:
+    return (
+        f"Step: {debugger.step_count}, {message}, time: "
+        f"{debugger.pretty_duration_since_start}, total steps/s: "
+        f"{debugger.step_frequency}, recent step/s: "
+        f"{debugger.step_frequency_since_last_report}"
+    )
+
+
+DEFAULT_DEBUGGER_REPORT_FORMAT = verbose_debugger_format
+```
+
+If you want to customise it:
+
+```python
+def custom_debugger_format(debugger: 'Debugger', message: str) -> str:
+    return (
+        f"Custom format, delta time is "
+        f"{debugger.pretty_duration_since_last_report} for {message}"
+    )
+
+
+DEFAULT_DEBUGGER_REPORT_FORMAT = custom_debugger_format
 ```
 
 #### Site data cache

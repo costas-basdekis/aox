@@ -1,5 +1,9 @@
+from typing import TYPE_CHECKING
+
 import aox.utils
 from aox.utils import get_current_directory
+if TYPE_CHECKING:
+    from aox.challenge import Debugger  # noqa: F401
 
 dot_aox = get_current_directory()
 repo_root = dot_aox.parent
@@ -55,4 +59,23 @@ EXTRA_MODULE_IMPORTS = []
 Also import these extra modules, eg if you specify custom summaries.
 
 It needs to be a list of strings that are valid module names.
+"""
+
+
+def verbose_debugger_format(debugger: 'Debugger', message: str) -> str:
+    return (
+        f"Step: {debugger.step_count}, {message}, time: "
+        f"{debugger.pretty_duration_since_start}, total steps/s: "
+        f"{debugger.step_frequency}, recent step/s: "
+        f"{debugger.step_frequency_since_last_report}"
+    )
+
+
+DEFAULT_DEBUGGER_REPORT_FORMAT = verbose_debugger_format
+"""
+A method that takes a `Debugger` and a message, and adds common stats that are
+useful for debugging.
+
+It can be accessed via `debugger.default_report(...)` and
+`debugger.default_report_if(...)`.
 """
