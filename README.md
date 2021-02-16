@@ -127,6 +127,21 @@ class Challenge(BaseChallenge):
     if debugger.should_report():
       debugger.report(
         "Some expensive calculation:", expensive_calculation())
+    # Debug through an iterable
+    for index in range(10):
+      debugger.step()
+      debugger.report_if(f"looking at index {index}")
+      ...
+    # Also helpers to step through an iterable
+    for index in debugger.stepping(range(10)):
+      debugger.report_if(f"looking at index {index}")
+      ...
+    # Or through a while loop
+    value = 0
+    while debugger.step_if(value < 3):
+      value += 1
+      debugger.report_if(f"checking value {value}")
+      ...
     return 6 * 7
 ```
 To see more information check the [Debugger documentation]
@@ -207,9 +222,23 @@ use the `pretty_*` property to get a nice `3h5m2s`
 rendition of time, or the `get_pretty_*` methods to control how many `digits` do
 of precision do you want to include in the seconds eg `3h5m2s.23`.
 
-> `debugger.step()`
+> `debugger.step()`, `debugger.stepping()`, and `debugger.step_if()`
 
-It signifies that you have performed a number of steps (by default 1)
+It signifies that you have performed a number of steps (by default 1).
+
+There are two helper methods:
+
+```python3
+# Step for each item in the passed in iterable
+for item in debugger.stepping(['a', 'b', 'c']):
+  ...
+
+# Step for each truthy value
+value = 0
+while debugger.step_if(value < 3):
+  value += 1
+  ...
+```
 
 #### Reading your stars
 

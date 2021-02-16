@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, TypeVar
+from typing import Optional, TypeVar, Iterable
 
 from aox.settings import settings_proxy
 from aox.utils import Timer, pretty_duration
@@ -9,6 +9,7 @@ __all__ = ['Debugger']
 
 # noinspection PyTypeChecker
 DebuggerT = TypeVar('DebuggerT', bound='Debugger')
+T = TypeVar('T')
 
 
 @dataclass
@@ -226,6 +227,48 @@ class Debugger:
         self.step_count_since_last_report += step_count
 
         return self
+
+    def stepping(self, items: Iterable[T]) -> Iterable[T]:
+        """
+
+        A helper for counting steps, that simply steps once for every item
+
+        >>> debugger = Debugger()
+        >>> debugger.step_count
+        0
+        >>> for index in debugger.stepping(range(3)):
+        ...     index, debugger.step_count
+        (0, 1)
+        (1, 2)
+        (2, 3)
+        >>> debugger.step_count
+        3
+        """
+        for item in items:
+            self.step()
+            yield item
+
+    def step_if(self, value: T) -> T:
+        """
+        A helper for counting steps, that simply steps once for every call if
+        the value is truthy, and returns the passed in value.
+
+        >>> debugger = Debugger()
+        >>> debugger.step_count
+        0
+        >>> _value = 0
+        >>> while debugger.step_if(_value < 3):
+        ...     _value += 1
+        ...     _value, debugger.step_count
+        (1, 1)
+        (2, 2)
+        (3, 3)
+        >>> debugger.step_count
+        3
+        """
+        if value:
+            self.step()
+        return value
 
     def report(self: DebuggerT, *args, **kwargs) -> DebuggerT:
         """
