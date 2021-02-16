@@ -90,8 +90,11 @@ def create_cli():
     @click.option('-f', '--force', 'force', is_flag=True)
     @click.option('--test', '-t', 'filters_texts', multiple=True)
     @click.option('--debug', '-d', 'debug', is_flag=True)
+    @click.option('--debug-interval', '-i', 'debug_interval', type=float,
+                  default=5)
     @click.pass_context
-    def challenge(ctx, year, day, part, path, force, filters_texts, debug):
+    def challenge(ctx, year, day, part, path, force, filters_texts, debug,
+                  debug_interval):
         if path is not None:
             year, day, part = settings_proxy().challenges_boilerplate\
                 .extract_from_filename(path)
@@ -100,7 +103,7 @@ def create_cli():
         if ctx.invoked_subcommand:
             return
         controller.test_and_run_challenge(
-            year, day, part, force, filters_texts, debug)
+            year, day, part, force, filters_texts, debug, debug_interval)
 
     @challenge.command(
         help=(
@@ -136,6 +139,8 @@ def create_cli():
     )
     @click.option('--test', '-t', 'filters_texts', multiple=True)
     @click.option('--debug', '-d', 'debug', is_flag=True)
+    @click.option('--debug-interval', '-i', 'debug_interval', type=float,
+                  default=5)
     @click.pass_context
     def run_all(ctx, **params):
         params = {
@@ -144,7 +149,7 @@ def create_cli():
         }
         controller.test_and_run_challenge(
             params['year'], params['day'], params['part'], params['force'],
-            params['filters_texts'], params['debug'])
+            params['filters_texts'], params['debug'], params['debug_interval'])
 
     @challenge.command(
         help=(
@@ -170,6 +175,8 @@ def create_cli():
         short_help="Run the challenge",
     )
     @click.option('--debug', '-d', 'debug', is_flag=True)
+    @click.option('--debug-interval', '-i', 'debug_interval', type=float,
+                  default=5)
     @click.pass_context
     def run(ctx, **params):
         params = {
@@ -178,7 +185,7 @@ def create_cli():
         }
         controller.run_challenge(
             params['year'], params['day'], params['part'], params['force'],
-            params['debug'])
+            params['debug'], params['debug_interval'])
 
     @challenge.command(
         help=(

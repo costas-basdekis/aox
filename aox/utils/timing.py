@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional, Callable, Union
 
-__all__ = ['Timer', 'DummyTimer']
+__all__ = ['Timer', 'DummyTimer', 'pretty_duration']
 
 
 class DummyTimer:
@@ -184,7 +184,7 @@ class Timer:
         return pretty_duration(duration, digits=digits)
 
     @property
-    def current_duration(self) -> Optional[float]:
+    def current_duration(self) -> float:
         """
         >>> timer = Timer(default_timer=DummyTimer())
         >>> timer.current_duration

@@ -3,7 +3,7 @@ from aox.challenge import BaseChallenge
 
 
 class Challenge(BaseChallenge):
-    def solve(self, _input, debug=False):
+    def solve(self, _input, debugger):
         """
         >>> Challenge().default_solve()
         42

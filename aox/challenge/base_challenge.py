@@ -7,6 +7,7 @@ import importlib
 import sys
 
 from aox.settings import settings_proxy
+from aox.utils import has_method_arguments
 
 
 __all__ = ['PlayNotImplementedError', 'BaseChallenge']
@@ -73,13 +74,21 @@ class BaseChallenge:
             'a',
         ] + extra_args
 
-    def default_solve(self, _input=None, debug=False):
+    # noinspection PyUnusedLocal
+    def default_solve(self, _input=None, debugger=None):
         """Convenient method to call `solve` with the input from the disk"""
         if _input is None:
             _input = self.input
-        return self.solve(_input, debug=debug)
+        if debugger is None:
+            from aox.challenge import Debugger
+            debugger = Debugger(enabled=False)
+        if has_method_arguments(self.solve, "debugger"):
+            return self.solve(_input, debugger=debugger)
+        else:
+            # noinspection PyArgumentList
+            return self.solve(_input, debug=debugger)
 
-    def solve(self, _input, debug=False):
+    def solve(self, _input, debugger):
         """
         The main method that needs to be overridden by every challenge.
 

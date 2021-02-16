@@ -1,4 +1,5 @@
 from unittest import TestCase, mock
+from unittest.mock import ANY
 
 from tests.utils import making_combined_info
 
@@ -33,7 +34,7 @@ class TestBaseChallenge(TestCase):
                 self.assertEqual(
                     mocked.call_args,
                     mock.call(
-                        "Custom Input\nOver Multiple\nLines", debug=False))
+                        "Custom Input\nOver Multiple\nLines", debug=ANY))
 
     def test_main_doesnt_run_if_not_main(self):
         with making_combined_info([(2020, 3, 'a')], None) as combined_info:
@@ -60,4 +61,5 @@ class TestBaseChallenge(TestCase):
                     self.assertEqual(
                         solve_mocked.call_args,
                         mock.call(
-                            "Custom Input\nOver Multiple\nLines", debug=False))
+                            "Custom Input\nOver Multiple\nLines",
+                            debug=ANY))

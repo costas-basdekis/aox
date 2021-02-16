@@ -49,7 +49,7 @@ in), and return the solution inside the `Challenge.solve` body:
 
 ```python
 class Challenge(BaseChallenge):
-    def solve(self, _input, debug=False):
+    def solve(self, _input, debugger):
          return your_awesome_calculations(_input)
 ```
 
@@ -108,16 +108,29 @@ AOX automatically picks up all doctests in a challenge and runs them if you run
 
 It also prints your solution when you run
 `aox challenge <year> <day> <part> run`. If you add the `--debug` flag, then you
-can use the `debug=False` parameter to your `Challenge.solve` method, which is
+can use the `debugger` parameter to your `Challenge.solve` method, which is
 useful when you want to print diagnostic stats:
 ```python
 class Challenge(BaseChallenge):
-  def solve(self, _input, debug=False):
-    if debug:
-      print("Many many lines of debug information")
-      print("That you don't want to read every time")
+  def solve(self, _input, debugger):
+    # Print something, if debugging is enable, and enough
+    # time has passed from the previous print statement
+    debugger.report_if(
+        "Many many lines of debug information")
+    # By default there is a 5s interval between printing
+    # To change that, use the --debug-interval/-i flag
+    debugger.report_if(
+        "You won't see this")    
+    # After enough time, `report_if` will print
+    time.sleep(5)
+    # To print something expensive, first check:
+    if debugger.should_report():
+      debugger.report(
+        "Some expensive calculation:", expensive_calculation())
     return 6 * 7
 ```
+To see more information check the [Debugger documentation]
+
 `aox challenge <year> <day> <part> run` will print:
 ```
 Solution: 42 (in 0.0s)
@@ -154,6 +167,44 @@ Solution: 1234567 (in 0.0s)
 [doctests]: https://docs.python.org/3/library/doctest.html
 [2019/15/A]: https://adventofcode.com/2019/day/15
 [2019/25/A]: https://adventofcode.com/2019/day/25
+[Debugger documentation]: #debugging-your-code
+
+#### Debugging your code
+
+Sometimes you need to see some details about the process you're running, and
+that could mean printing some info in the console, especially if you have a very
+inefficient algorithm. The `Debugger` class, that is passed in as `debugger` in
+the `Challenge.solve` method, provides some very useful functionality:
+
+> `if debugger:` or `if debugger.enabled:`
+
+This allows you to only do something if you passed `--debug`/`-d` as an argument
+
+> `debugger.step_count`, `debugger.step_count_since_last_report`,
+`debugger.step_frequency`, and `debugger.step_frequency_since_last_report`
+
+You inspect how many steps total/per second have you performed since the
+start/last time you reported.
+
+> `if debugger.should_report(): debugger.report(...)` or
+> `debugger.report_if(...)`
+
+Advance the step count once, and print something to the console, if the debugger
+is enabled, and enough time has passed since the last reporting (default is
+`5s`, controlled by the `--debug-interval`/`-i` flag).
+
+> `debugger.duration_since_start` and `debugger.duration_since_last_report`, as
+> well as `debugger.pretty_duration_*` and `debugger.get_pretty_duration_*()`
+
+You can get the duration since the start/last report, which would be the number
+of seconds since then. Since these are fine precision floats, you would like to
+use the `pretty_*` property to get a nice `3h5m2s`
+rendition of time, or the `get_pretty_*` methods to control how many `digits` do
+of precision do you want to include in the seconds eg `3h5m2s.23`.
+
+> `debugger.step()`
+
+It signifies that you have performed a number of steps (by default 1)
 
 #### Reading your stars
 

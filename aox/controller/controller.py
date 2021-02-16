@@ -11,6 +11,7 @@ from enum import auto
 from typing import Optional
 
 import click
+from aox.challenge import Debugger
 
 from aox.settings import Settings, settings_proxy
 from aox.model import RepoInfo, AccountInfo, CombinedInfo, CombinedPartInfo
@@ -19,7 +20,8 @@ from aox.styling.shortcuts import e_warn, e_value, e_success, e_star, e_error, \
     e_unable, e_suggest
 from aox.summary import summary_registry
 from aox.testing.doctest_enhanced_testmod import testmod_with_filter
-from aox.utils import get_current_directory, StringEnum, Timer
+from aox.utils import get_current_directory, StringEnum, Timer, \
+    has_method_arguments
 
 current_directory = get_current_directory()
 
@@ -222,14 +224,15 @@ class Controller:
             f"whole event at {day_info.get_year_url()}")
 
     def test_and_run_challenge(self, year, day, part, force, filters_texts,
-                               debug):
+                               debug, debug_interval):
         challenge_instance = self.get_or_create_challenge(
             year, day, part, force)
         if not challenge_instance:
             return False, None, None
         test_results = self.test_challenge(
             year, day, part, force, filters_texts)
-        _, solution = self.run_challenge(year, day, part, force, debug)
+        _, solution = self.run_challenge(
+            year, day, part, force, debug, debug_interval)
 
         return True, test_results, solution
 
@@ -281,13 +284,19 @@ class Controller:
 
         return results
 
-    def run_challenge(self, year, day, part, force, debug):
+    def run_challenge(self, year, day, part, force, debug, debug_interval):
         challenge_instance = self.get_or_create_challenge(
             year, day, part, force)
         if not challenge_instance:
             return False, None
         with Timer() as timer:
-            solution = challenge_instance.default_solve(debug=debug)
+            debugger = Debugger(
+                enabled=debug, min_report_interval_seconds=debug_interval)
+            if has_method_arguments(
+                    challenge_instance.default_solve, "debugger"):
+                solution = challenge_instance.default_solve(debugger=debugger)
+            else:
+                solution = challenge_instance.default_solve(debug=debugger)
         if solution is None:
             styled_solution = e_error(str(solution))
         else:
