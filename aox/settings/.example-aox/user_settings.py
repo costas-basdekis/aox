@@ -66,7 +66,7 @@ def verbose_debugger_format(debugger: 'Debugger', message: str) -> str:
     return (
         f"Step: {debugger.step_count}, {message}, time: "
         f"{debugger.pretty_duration_since_start}, total steps/s: "
-        f"{debugger.step_frequency}, recent step/s: "
+        f"{debugger.step_frequency}, recent steps/s: "
         f"{debugger.step_frequency_since_last_report}"
     )
 
