@@ -89,16 +89,40 @@ Testing is mostly done via [doctests], which are collected via [pytest]. We also
 use [flake8] (via [pytest-flake8]) to lint:
 
 ```shell script
-pip install -r test_requirements.txt
-pip install -r requirements.txt
-pytest
+make setup
+make test
 ```
 
 If you can use doctests inline in modules, and for more advance cases write unit
 tests in [tests]
 
 [doctests]: https://docs.python.org/3/library/doctest.html
-[pytest]: https://docs.py``test.org/en/stable/
+[pytest]: https://docs.pytest.org/en/stable/
 [flake8]: https://flake8.pycqa.org/en/3.1.1/index.html
 [pytest-flake8]: https://pypi.org/project/pytest-flake8/
 [tests]: ../tests
+
+## Releasing
+Before every release, the version should be incremented in [version.py]:
+```python
+AOX_VERSION = (1, 0, 2)
+```
+
+* Increment the patch part for non-breaking changes, that are not that
+significant
+* Increment the minor part for small breaking changes, and/or for mildly
+interesting updates
+* Increment the major part for drastic changes
+
+There should be a single commit with the bumped version, and it should also be
+tagged:
+```shell script
+make commit_and_tag
+```
+
+Then build and publish the PyPI package
+```shell script
+make build_and_publish
+```
+
+[version.py]: ./version.py
