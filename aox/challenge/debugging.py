@@ -7,8 +7,6 @@ from aox.utils import DummyTimer  # noqa: F401
 
 __all__ = ['Debugger']
 
-# noinspection PyTypeChecker
-DebuggerT = TypeVar('DebuggerT', bound='Debugger')
 T = TypeVar('T')
 
 
@@ -52,7 +50,7 @@ class Debugger:
         """
         return self.enabled
 
-    def reset(self: DebuggerT) -> DebuggerT:
+    def reset(self) -> 'Debugger':
         """
         Reset counting
 
@@ -80,12 +78,13 @@ class Debugger:
 
         return self
 
-    def sub_debugger(self: DebuggerT) -> DebuggerT:
+    def sub_debugger(self) -> 'Debugger':
         """
         Create a sub-debugger that inherits settings, but starts counting from 0
         time and 0 steps.
         """
         cls = type(self)
+        # noinspection PyArgumentList
         return cls(
             enabled=self.enabled,
             min_report_interval_seconds=self.min_report_interval_seconds,
@@ -221,7 +220,7 @@ class Debugger:
             >= self.min_report_interval_seconds
         )
 
-    def step(self: DebuggerT, step_count: int = 1) -> DebuggerT:
+    def step(self, step_count: int = 1) -> 'Debugger':
         """Advance the step counter"""
         self.step_count += step_count
         self.step_count_since_last_report += step_count
@@ -270,7 +269,7 @@ class Debugger:
             self.step()
         return value
 
-    def report(self: DebuggerT, *args, **kwargs) -> DebuggerT:
+    def report(self, *args, **kwargs) -> 'Debugger':
         """
         Output a message
 
@@ -300,7 +299,7 @@ class Debugger:
 
         return self
 
-    def default_report(self: DebuggerT, message, **kwargs) -> DebuggerT:
+    def default_report(self, message, **kwargs) -> 'Debugger':
         """
         Output a message with the default format from settings.
         """
@@ -312,7 +311,7 @@ class Debugger:
 
         return self.report(message, **kwargs)
 
-    def report_if(self: DebuggerT, *args, **kwargs) -> DebuggerT:
+    def report_if(self, *args, **kwargs) -> 'Debugger':
         """
         Output a message, but only if it's appropriate
 
@@ -338,7 +337,7 @@ class Debugger:
 
         return self
 
-    def default_report_if(self: DebuggerT, message, **kwargs) -> DebuggerT:
+    def default_report_if(self, message, **kwargs) -> 'Debugger':
         """
         Output a message with the default format from settings, if it's
         appropriate.
