@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Optional, TypeVar, Iterable
+from typing import Optional, TypeVar, Iterable, Callable, List
 
 from aox.settings import settings_proxy
 from aox.utils import Timer, pretty_duration
@@ -8,6 +9,7 @@ from aox.utils import DummyTimer  # noqa: F401
 __all__ = ['Debugger']
 
 T = TypeVar('T')
+ReportFormat = Callable[['Debugger', str], str]
 
 
 @dataclass
@@ -27,6 +29,8 @@ class Debugger:
     """How much time before two reporting attempts"""
     last_report_time: Optional[float] = None
     """Last time something was reported"""
+    extra_report_formats: List[ReportFormat] = field(default_factory=list)
+    """A list of nested report formats, to apply successively"""
     indent: str = ""
     """The indent for reporting. Creating a sub-debugger should indent output"""
     indent_increase: str = "  "
@@ -58,18 +62,18 @@ class Debugger:
         >>> debugger
         Debugger(timer=Timer(default_timer=DT(1, 1), start=0, end=None),
             enabled=True, step_count=0, step_count_since_last_report=0,
-            min_report_interval_seconds=5, last_report_time=None, indent='',
-            indent_increase='  ')
+            min_report_interval_seconds=5, last_report_time=None,
+            extra_report_formats=[], indent='', indent_increase='  ')
         >>> debugger.report()
         Debugger(timer=Timer(default_timer=DT(2, 1), start=0, end=None),
             enabled=True, step_count=0, step_count_since_last_report=0,
-            min_report_interval_seconds=5, last_report_time=1, indent='',
-            indent_increase='  ')
+            min_report_interval_seconds=5, last_report_time=1,
+            extra_report_formats=[], indent='', indent_increase='  ')
         >>> debugger.reset()
         Debugger(timer=Timer(default_timer=DT(3, 1), start=2, end=None),
             enabled=True, step_count=0, step_count_since_last_report=0,
-            min_report_interval_seconds=5, last_report_time=None, indent='',
-            indent_increase='  ')
+            min_report_interval_seconds=5, last_report_time=None,
+            extra_report_formats=[], indent='', indent_increase='  ')
         """
         self.timer.__enter__()
         self.step_count = 0
@@ -269,6 +273,15 @@ class Debugger:
             self.step()
         return value
 
+    @contextmanager
+    def adding_extra_report_format(self, report_format: ReportFormat):
+        """Temporarily add another report format method"""
+        self.extra_report_formats.append(report_format)
+        try:
+            yield
+        finally:
+            self.extra_report_formats.remove(report_format)
+
     def report(self, *args, **kwargs) -> 'Debugger':
         """
         Output a message
@@ -303,13 +316,21 @@ class Debugger:
         """
         Output a message with the default format from settings.
         """
-        from aox.settings import settings_proxy
+        message = self.apply_report_formats(message)
+        return self.report(message, **kwargs)
+
+    def apply_report_formats(self, message: str = "") -> str:
+        """Apply the default, and any extra report formats, to a message"""
+        report_formats = self.extra_report_formats
+        for report_format in reversed(report_formats):
+            message = report_format(self, message)
+
         default_debugger_report_format = settings_proxy()\
             .default_debugger_report_format
         if default_debugger_report_format:
             message = default_debugger_report_format(self, message)
 
-        return self.report(message, **kwargs)
+        return message
 
     def report_if(self, *args, **kwargs) -> 'Debugger':
         """
@@ -342,9 +363,6 @@ class Debugger:
         Output a message with the default format from settings, if it's
         appropriate.
         """
-        default_debugger_report_format = settings_proxy()\
-            .default_debugger_report_format
-        if default_debugger_report_format:
-            message = default_debugger_report_format(self, message)
-
-        return self.report_if(message, **kwargs)
+        if not self.should_report():
+            return self
+        return self.default_report(message, **kwargs)

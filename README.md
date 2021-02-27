@@ -213,6 +213,41 @@ is enabled, and enough time has passed since the last reporting (default is
 Similar to the above, but it uses the formatting function from the
 `DEFAULT_DEBUGGER_REPORT_FORMAT` to include some useful data in the output.
 
+If your calculations run through nested function calls, you can also provide
+additional info, by using `debugger.extra_report_formats`, or using the
+`debugger.adding_extra_report_format` context manager:
+
+```python
+def level_1(data, debugger):
+    def report_x(_, message):
+        return f"x: {x}"
+    # Will print: 'start x'
+    debugger.default_report("start x")
+    total = 0
+    for x in range(10000000):
+        with debugger.adding_extra_report_format(report_x):
+            # Will print: 'x: 0, start y'
+            debugger.default_report("start y")
+            total += level_2(data[x], debugger)
+def level_2(data, debugger):
+    def report_y(_, message):
+        return f"y: {y}"
+    total = 0
+    for y in range(10000000):
+        with debugger.adding_extra_report_format(report_y):
+            # Will print: 'x: 0, y: 0, start z'
+            debugger.default_report("start z")
+            total += level_3(data[y], debugger)
+    return total
+def level_3(data, debugger):
+    total = 0
+    for z in range(10000000):
+        total += data[z]['a'] * data[z]['b']
+        # Will print: 'x: 0, y: 0, z: 0'
+        debugger.default_report_if(f"z: {z}")
+    return total
+```
+
 > `debugger.duration_since_start` and `debugger.duration_since_last_report`, as
 > well as `debugger.pretty_duration_*` and `debugger.get_pretty_duration_*()`
 
