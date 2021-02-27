@@ -5,6 +5,7 @@ from pathlib import Path
 
 __all__ = [
     'get_caller_file_name',
+    'get_root_directory',
     'get_current_directory',
 ]
 

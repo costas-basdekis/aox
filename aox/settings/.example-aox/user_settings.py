@@ -63,9 +63,11 @@ It needs to be a list of strings that are valid module names.
 
 
 def verbose_debugger_format(debugger: 'Debugger', message: str) -> str:
+    from aox.utils import add_thousands_separator
+
     return (
-        f"Step: {debugger.step_count}, {message}, time: "
-        f"{debugger.pretty_duration_since_start}, total steps/s: "
+        f"Step: {add_thousands_separator(debugger.step_count)}, {message}, "
+        f"time: {debugger.pretty_duration_since_start}, total steps/s: "
         f"{debugger.step_frequency}, recent steps/s: "
         f"{debugger.step_frequency_since_last_report}"
     )
