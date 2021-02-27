@@ -299,7 +299,7 @@ class Debugger:
 
         return self
 
-    def default_report(self, message, **kwargs) -> 'Debugger':
+    def default_report(self, message: str = "", **kwargs) -> 'Debugger':
         """
         Output a message with the default format from settings.
         """
@@ -337,7 +337,7 @@ class Debugger:
 
         return self
 
-    def default_report_if(self, message, **kwargs) -> 'Debugger':
+    def default_report_if(self, message: str = "", **kwargs) -> 'Debugger':
         """
         Output a message with the default format from settings, if it's
         appropriate.
