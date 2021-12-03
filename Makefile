@@ -23,7 +23,7 @@ build_and_publish: build publish
 .PHONY: build_and_publish
 
 build:
-	rm -r build/ dist/
+	rm -rf build/ dist/
 	python3 -m build
 .PHONY: build
 
