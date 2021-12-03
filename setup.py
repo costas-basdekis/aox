@@ -3,6 +3,8 @@ import os
 from distutils.core import setup
 from pathlib import Path
 
+import setuptools
+
 from aox.version import AOX_PACKAGE_VERSION_LABEL
 
 current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -17,7 +19,7 @@ setup(
     url='https://github.com/costas-basdekis/aox',
     long_description=current_directory.joinpath('README.md').read_text(),
     long_description_content_type='text/markdown',
-    packages=['aox'],
+    packages=setuptools.find_packages(include=("aox*",)),
     scripts=[
         'scripts/aox',
     ],
@@ -35,5 +37,5 @@ setup(
         'Programming Language :: Python :: 3.9',
         'Topic :: Software Development',
         'Typing :: Typed',
-    ]
+    ],
 )
