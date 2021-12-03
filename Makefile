@@ -12,11 +12,11 @@ commit_and_tag: commit tag
 
 commit:
 	git add aox/version
-	git commit -C "Bump version to v$(python3 aox/version.py)"
+	git commit -C "Bump version to v$$(python3 aox/version.py)"
 .PHONY: commit
 
 tag:
-	git tag -a "v$(python3 aox/version.py)" -m "Release v$(python3 aox/version.py)" -e
+	git tag -a "v$$(python3 aox/version.py)" -m "Release v$$(python3 aox/version.py)" -e
 .PHONY: tag
 
 build_and_publish: build publish
