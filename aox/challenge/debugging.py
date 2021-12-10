@@ -188,7 +188,7 @@ class Debugger:
         >>> Debugger().should_report()
         True
         >>> Debugger(enabled=False).should_report()
-        False
+        True
         >>> debugger = Debugger(timer=Timer(default_timer=DummyTimer()))
         >>> debugger.should_report()
         True
@@ -208,8 +208,6 @@ class Debugger:
         >>> debugger.should_report()
         True
         """
-        if not self.enabled:
-            return False
         if not self.should_report_after_time():
             return False
         return True
@@ -288,6 +286,8 @@ class Debugger:
 
         >>> Debugger().report()
         Debugger(...)
+        >>> Debugger(enabled=False).report("a", "message")
+        Debugger(...)
         >>> Debugger().report("a", "message")
         a message
         Debugger(...)
@@ -302,7 +302,7 @@ class Debugger:
         ??a message
         Debugger(...)
         """
-        if args:
+        if self.enabled and args:
             if self.indent not in (None, ""):
                 print(self.indent, end="")
             print(*args, **kwargs)
